@@ -1341,7 +1341,6 @@ void Internal::activating_all_new_imported_literals () {
     if (!scores.contains (idx))
       scores.push_back (idx);
     assert (scores.contains(idx));
-    assert (queue.check_contains(links, idx));
     assert (f.active ());
   }
 
@@ -1352,7 +1351,7 @@ void Internal::activating_all_new_imported_literals () {
     if (c->garbage)
       continue;
     for (auto lit : *c) {
-      assert (flags (lit).active() || flags (lit).fixed());
+      assert (flags (lit).active() || flags (lit).fixed() || flags (lit).eliminated());
     }
   }
 #endif

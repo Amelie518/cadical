@@ -8,6 +8,7 @@ namespace CaDiCaL {
 inline void Internal::init_enqueue (int idx) {
   Link &l = links[idx];
   if (!opts.varprioritizefirst) {
+    LOG ("enqueueing %s at the beginning", LOGLIT(idx));
     l.prev = 0;
     if (queue.first) {
       assert (!links[queue.first].prev);
@@ -21,9 +22,11 @@ inline void Internal::init_enqueue (int idx) {
     assert (btab[idx] <= stats.bumped);
     l.next = queue.first;
     queue.first = idx;
-    if (!queue.unassigned)
-      update_queue_unassigned (queue.last);
+    //due to interactions with IPASIR-UP, we need to update it every time.
+    //if (!queue.unassigned)
+    update_queue_unassigned (queue.last);
   } else {
+    LOG ("enqueueing %s at the end", LOGLIT(idx));
     l.next = 0;
     if (queue.last) {
       assert (!links[queue.last].next);

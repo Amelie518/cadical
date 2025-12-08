@@ -1336,8 +1336,12 @@ void Internal::activating_all_new_imported_literals () {
     }
     mark_active (idx);
     init_enqueue (idx);
-    scores.push_back (idx);
+    // due to propagation and backtracking, the literal might have already been
+    // added
+    if (!scores.contains (idx))
+      scores.push_back (idx);
     assert (scores.contains(idx));
+    assert (queue.check_contains(links, idx));
     assert (f.active ());
   }
 

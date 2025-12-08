@@ -14,6 +14,8 @@ void Internal::add_observed_var (int ilit) {
   if (idx >= (int64_t) relevanttab.size ())
     relevanttab.resize (1 + (size_t) idx, 0);
   unsigned &ref = relevanttab[idx];
+  if (flags (idx).unused())
+    declare_variable (idx);
   if (ref < UINT_MAX) {
     ref++;
     LOG ("variable %d is observed %u times", idx, ref);

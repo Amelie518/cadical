@@ -217,6 +217,10 @@ bool Internal::better_decision (int lit, int other) {
 int Internal::decide () {
   assert (!satisfied ());
   START (decide);
+  // during interaction with the user propagator, new variables can be added
+  // (for example by observed).
+  if (!imports.empty())
+    activating_all_new_imported_literals ();
   int res = 0;
   if ((size_t) level < assumptions.size ()) {
     const int lit = assumptions[level];

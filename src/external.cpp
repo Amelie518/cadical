@@ -241,6 +241,8 @@ void External::add (int elit) {
 
   if (elit)
     LOG ("adding external %d as internal %d", elit, ilit);
+  if (internal->external_prop)
+    internal->activating_all_new_imported_literals ();
   internal->add_original_lit (ilit);
 
   // Clean-up saved external literals once proof line is printed
@@ -395,11 +397,11 @@ void External::add_observed_var (int elit) {
 
   LOG ("marking %d as externally watched", eidx);
 
+  int ilit = internalize (elit);
   // Will do the necessary internalization
   freeze (elit);
   is_observed[eidx] = true;
 
-  int ilit = internalize (elit);
   // internal add-observed-var backtracks to a lower decision level to
   // unassign the variable in case it was already assigned previously (but
   // not on the current level)

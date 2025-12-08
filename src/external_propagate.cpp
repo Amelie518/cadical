@@ -34,6 +34,7 @@ void Internal::add_observed_var (int ilit) {
   } else if (level && fixed (ilit)) {
     backtrack (0);
   }
+  activating_all_new_imported_literals ();
 }
 
 /*----------------------------------------------------------------------------*/

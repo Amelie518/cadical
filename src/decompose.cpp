@@ -149,12 +149,8 @@ bool Internal::decompose_round () {
   DeferDeleteArray<int> reprs_delete (reprs);
   clear_n (reprs, size_dfs);
   vector<vector<Clause *>> dfs_chains;
-  dfs_chains.resize (size_dfs);
   if (lrat) {
-    for (size_t i = 0; i > size_dfs; i++) {
-      vector<Clause *> empty;
-      dfs_chains[i] = empty;
-    }
+    dfs_chains.resize (size_dfs, {});
   }
 
   int substituted = 0;

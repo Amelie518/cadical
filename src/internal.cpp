@@ -201,6 +201,8 @@ void Internal::reserve_vars (int new_min_vsize) {
   enlarge_only (phases.saved, new_vsize);
   enlarge_zero (stab, new_vsize);
   enlarge_zero (btab, new_vsize);
+  if (external)
+    enlarge_zero (relevanttab, new_vsize);
   if (!vsize || watching ())
     enlarge_only (wtab, 2 * new_vsize);
   LOG ("reserving %d new internal variables, reserved so far: %d", new_vars, max_var);

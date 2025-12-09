@@ -793,13 +793,15 @@ void Internal::adjust_scores_and_phases_of_fresh_variables (
 #endif
 
   for (auto lit : factoring.fresh) {
-    LOG ("dequeuing %s", LOGLIT (lit));
-    queue.dequeue (links, lit);
+    LOG ("dequeuing %s, last being %s", LOGLIT (lit), LOGLIT (queue.last));
+    if (!flags (lit).fixed ())
+      queue.dequeue (links, lit);
   }
 
   for (auto lit : factoring.fresh) {
     LOG ("dequeuing %s", LOGLIT (lit));
-    queue.bury (links, lit);
+    if (!flags (lit).fixed ())
+      queue.bury (links, lit);
   }
 
   // fix the scores with negative numbers

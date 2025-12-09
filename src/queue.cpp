@@ -5,7 +5,7 @@ namespace CaDiCaL {
 // Slightly different than 'bump_variable' since the variable is not
 // enqueued at all.
 
-inline void Internal::init_enqueue (int idx) {
+void Internal::init_enqueue (int idx) {
   Link &l = links[idx];
   if (!opts.varprioritizefirst) {
     LOG ("enqueueing %s at the beginning", LOGLIT(idx));

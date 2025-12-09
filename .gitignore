@@ -2,3 +2,6 @@ build
 makefile
 .aider*
 *~
+/*.trace
+traces
+debug.json

@@ -17,6 +17,7 @@ Internal::Internal ()
       private_steps (false), rephased (0), vsize (0), max_var (0),
       clause_id (0), original_id (0), reserved_ids (0), conflict_id (0),
       saved_decisions (0), concluded (false), lrat (false), frat (false),
+      new_binary_since_dedup (true),
       level (0), vals (0), score_inc (1.0), scores (this), conflict (0),
       ignore (0), external_reason (&external_reason_clause),
       newest_clause (0), force_no_backtrack (false),
@@ -726,13 +727,15 @@ void Internal::init_search_limits () {
 
 /*------------------------------------------------------------------------*/
 
-bool Internal::preprocess_round (int round) {
+bool Internal::preprocess_round (int round, bool &triggered) {
   (void) round;
   if (unsat)
     return false;
   if (!max_var)
     return false;
   START (preprocess);
+  if (!triggered)
+    report ('('), triggered = true;
   struct {
     int64_t vars, clauses;
   } before, after;
@@ -773,7 +776,7 @@ bool Internal::preprocess_round (int round) {
 }
 
 // for now counts as one of the preprocessing rounds TODO: change this?
-void Internal::preprocess_quickly (bool always) {
+void Internal::preprocess_quickly (bool always, bool &triggered) {
   if (unsat)
     return;
   if (!max_var)
@@ -793,6 +796,7 @@ void Internal::preprocess_quickly (bool always) {
   // stats.preprocessings++;
   assert (!preprocessing);
   preprocessing = true;
+  triggered = true;
   report ('(');
   PHASE ("preprocessing", stats.preprocessings,
          "starting with %" PRId64 " variables and %" PRId64 " clauses",
@@ -829,15 +833,15 @@ void Internal::preprocess_quickly (bool always) {
 
 int Internal::preprocess (bool always) {
   int res = 0;
-  if (!level && !unsat && opts.luckyearly)
-    res = lucky_phases ();
   if (res)
     return res;
-  preprocess_quickly (always);
+  bool preprecessing_triggered = false;
+  preprocess_quickly (always, preprecessing_triggered);
   for (int i = 0; i < lim.preprocessing; i++)
-    if (!preprocess_round (i))
+    if (!preprocess_round (i, preprecessing_triggered))
       break;
-  report (')');
+  if (preprecessing_triggered)
+    report (')');
   if (unsat)
     return 20;
   return 0;
@@ -1020,6 +1024,8 @@ int Internal::solve (bool preprocess_only) {
     if (!res && !level)
       res = local_search ();
   }
+  if (!preprocess_only && !res && !level && opts.luckyearly)
+    res = lucky_phases ();
   if (!res && !level)
     res = preprocess (preprocess_only);
   if (!preprocess_only) {

@@ -277,8 +277,6 @@ void Internal::report (char type, int verbose) {
     break;
   case '(':
   case ')':
-    tout.bold ();
-    tout.yellow ();
     break;
   case '{':
   case '}':
@@ -298,7 +296,7 @@ void Internal::report (char type, int verbose) {
     fputc (' ', stdout);
     fputs (reports[i].buffer, stdout);
   }
-  if (stable || type == 'L' || type == 'P' || type == ']')
+  if (stable || type == 'L' || type == 'P' || type == ']' || type == ')' || preprocessing)
     tout.normal ();
   fputc ('\n', stdout);
   fflush (stdout);

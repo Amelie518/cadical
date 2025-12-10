@@ -49,7 +49,6 @@ namespace CaDiCaL {
 inline void Internal::vivify_subsume_clause (Clause *subsuming,
                                              Clause *subsumed) {
   assert (subsumed != subsuming);
-  stats.subsumed++;
   stats.vivifysubs++;
 #ifndef NDEBUG
   assert (subsuming);
@@ -812,8 +811,7 @@ inline void Internal::vivify_increment_stats (const Vivifier &vivifier) {
   case Vivify_Mode::TIER3:
     ++stats.vivifystred3;
     break;
-  default:
-    assert (vivifier.tier == Vivify_Mode::IRREDUNDANT);
+  case Vivify_Mode::IRREDUNDANT:
     ++stats.vivifystrirr;
     break;
   }
@@ -1174,8 +1172,7 @@ bool Internal::vivify_clause (Vivifier &vivifier, Clause *c) {
     case Vivify_Mode::TIER2:
       ++stats.vivifiedtier2;
       break;
-    default:
-      assert (vivifier.tier == Vivify_Mode::TIER3);
+    case Vivify_Mode::TIER3:
       ++stats.vivifiedtier3;
       break;
     }
@@ -1453,7 +1450,7 @@ inline std::vector<Clause *> &current_schedule (Vivifier &vivifier) {
   case Vivify_Mode::TIER3:
     return vivifier.schedule_tier3;
     break;
-  default:
+  case Vivify_Mode::IRREDUNDANT:
     return vivifier.schedule_irred;
     break;
   }
@@ -1707,8 +1704,7 @@ void set_vivifier_mode (Vivifier &vivifier, Vivify_Mode tier) {
   case Vivify_Mode::TIER3:
     vivifier.tag = 'w';
     break;
-  default:
-    assert (tier == Vivify_Mode::IRREDUNDANT);
+  case Vivify_Mode::IRREDUNDANT:
     vivifier.tag = 'x';
     break;
   }
@@ -1793,12 +1789,12 @@ bool Internal::vivify () {
   vivify_initialize (vivifier, init_ticks);
   stats.ticks.vivify += init_ticks;
   int64_t limit = stats.ticks.vivify;
-  const double shared_effort = (double) init_ticks / 4.0;
+  const int64_t shared_effort = (double) init_ticks / 4.0;
   if (opts.vivifytier1) {
     set_vivifier_mode (vivifier, Vivify_Mode::TIER1);
     if (limit < stats.ticks.vivify)
       limit = stats.ticks.vivify;
-    const double effort = (total * tier1effort) / sumeffort;
+    const int64_t effort = (total * tier1effort) / sumeffort;
     assert (std::numeric_limits<int64_t>::max () - (int64_t) effort >=
             limit);
     limit += effort;
@@ -1818,7 +1814,7 @@ bool Internal::vivify () {
     erase_vector (vivifier.schedule_tier1);
     if (limit < stats.ticks.vivify)
       limit = stats.ticks.vivify;
-    const double effort = (total * tier2effort) / sumeffort;
+    const int64_t effort = (total * tier2effort) / sumeffort;
     assert (std::numeric_limits<int64_t>::max () - (int64_t) effort >=
             limit);
     limit += effort;
@@ -1837,7 +1833,7 @@ bool Internal::vivify () {
     erase_vector (vivifier.schedule_tier2);
     if (limit < stats.ticks.vivify)
       limit = stats.ticks.vivify;
-    const double effort = (total * tier3effort) / sumeffort;
+    const int64_t effort = (total * tier3effort) / sumeffort;
     assert (std::numeric_limits<int64_t>::max () - (int64_t) effort >=
             limit);
     limit += effort;
@@ -1856,7 +1852,7 @@ bool Internal::vivify () {
     erase_vector (vivifier.schedule_tier3);
     if (limit < stats.ticks.vivify)
       limit = stats.ticks.vivify;
-    const double effort = (total * irreffort) / sumeffort;
+    const int64_t effort = (total * irreffort) / sumeffort;
     assert (std::numeric_limits<int64_t>::max () - (int64_t) effort >=
             limit);
     limit += effort;
@@ -1864,8 +1860,8 @@ bool Internal::vivify () {
       limit -= shared_effort;
       assert (limit >= 0);
       set_vivifier_mode (vivifier, Vivify_Mode::IRREDUNDANT);
-      const int old = stats.vivifystrirr;
-      const int old_tried = stats.vivifychecks;
+      const int64_t old = stats.vivifystrirr;
+      const int64_t old_tried = stats.vivifychecks;
       vivify_round (vivifier, limit);
       if (stats.vivifychecks - old_tried == 0 ||
           (float) (stats.vivifystrirr - old) /

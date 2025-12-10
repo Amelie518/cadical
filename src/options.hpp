@@ -152,6 +152,7 @@ OPTION( lucky,             1,  0,  1,0,0,1, "lucky phases") \
 OPTION( luckyassumptions,  1,  0,  1,0,0,1, "lucky phases with assumptions") \
 OPTION( luckyearly,        1,  0,  1,0,0,1, "lucky phases before preprocessing") \
 OPTION( luckylate,         1,  0,  1,0,0,1, "lucky phases after preprocessing") \
+OPTION( luckyrounds,       10, 1,100,0,0,1, "maximum number of lucky round") \
 OPTION( minimize,          1,  0,  1,0,0,1, "minimize learned clauses") \
 OPTION( minimizedepth,   1e3,  0,1e3,0,0,1, "minimization depth") \
 OPTION( minimizeticks,     1,  0,  1,0,0,1, "increment ticks in minimization") \
@@ -166,7 +167,7 @@ OPTION( probethresh,       0,  0,100,1,0,1, "delay if ticks smaller thresh*claus
 OPTION( profile,           2,  0,  4,0,0,0, "profiling level") \
 QUTOPT( quiet,             0,  0,  1,0,0,0, "disable all messages") \
 OPTION( radixsortlim,     32,  0,2e9,0,0,1, "radix sort limit") \
-OPTION( randec,            0,  0,  1,0,0,1, "random decisions") \
+OPTION( randec,            1,  0,  1,0,0,1, "random decisions") \
 OPTION( randecfocused,     1,  0,  1,0,0,1, "random decisions in focused mode") \
 OPTION( randecinit,       1e3, 2,2e9,0,0,1, "inital random decision interval") \
 OPTION( randecint,       500,  0,2e9,0,0,1, "random conflict length") \
@@ -250,10 +251,10 @@ OPTION( transredmaxeff,  1e8,  0,2e9,1,0,1, "maximum efficiency") \
 OPTION( transredmineff,    0,  0,2e9,1,0,1, "minimum efficiency") \
 OPTION( varpindexorder,    1,  0,  1,0,0,1, "use literals name given as (DIMACS) input") \
 OPTION( varprioritizefirst,0,  0,  1,0,0,1, "reverse variable ordering") \
-QUTOPT( verbose,           0,  0,  3,0,0,0, "more verbose messages") \
+QUTOPT( verbose,           0,  0,  4,0,0,0, "more verbose messages") \
 OPTION( veripb,            0,  0,  4,0,0,1, "odd=check-deletions, >2 drat") \
 OPTION( vivify,            1,  0,  1,0,1,1, "vivification") \
-OPTION( vivifycalctier,    0,  0,  1,0,0,1, "recalculate tier limits") \
+OPTION( vivifycalctier,    1,  0,  1,0,0,1, "use tier limits") \
 OPTION( vivifydemote,      0,  0,  1,0,1,1, "demote irredundant or delete directly") \
 OPTION( vivifyeffort,     50,  0,1e5,1,0,1, "overall efficiency per mille") \
 OPTION( vivifyflush,       1,  0,  1,1,0,1,  "flush subsumed before vivification rounds") \
@@ -276,7 +277,7 @@ OPTION( walkfullocc,      0,   0,  1,1,0,1, "use Kissat's full occurrences inste
 OPTION( walkmaxeff,      1e7,  0,2e9,1,0,1, "maximum efficiency (in 1e3 ticks)") \
 OPTION( walkmineff,        0,  0,1e7,1,0,1, "minimum efficiency") \
 OPTION( walknonstable,     1,  0,  1,0,0,1, "walk in non-stabilizing phase") \
-OPTION( walkredundant,     0,  0,  1,0,0,1, "walk redundant clauses too") \
+OPTION( walkredundant,     0,  0,  2,0,0,1, "walk redundant clauses too [0 = none, 1 = binary nonyhyper, 2=all]") \
 OPTION( warmup,            1,  0,  1,0,0,1, "warmup before walk using propagation") \
 
 // Note, keep an empty line right before this line because of the last '\'!

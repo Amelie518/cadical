@@ -214,6 +214,7 @@ struct Internal {
       probehbr_chains;          // only used if opts.probehbr=false
   bool lrat;                    // generate LRAT internally
   bool frat;                    // finalize non-deleted clauses in proof
+  bool new_binary_since_dedup;// new binary clause has been learned since last decompose round
   int level;                    // decision level ('control.size () - 1')
   Phases phases;                // saved, target and best phases
   signed char *vals;            // assignment [-max_var,max_var]
@@ -899,6 +900,8 @@ struct Internal {
   void lucky_assume_decision (int);
   int trivially_false_satisfiable ();
   int trivially_true_satisfiable ();
+  template<class Iterator>
+  int lucky_fixed_test (Iterator begin, Iterator end, signed char pol, std::string str);
   int forward_false_satisfiable ();
   int forward_true_satisfiable ();
   int backward_false_satisfiable ();
@@ -1427,7 +1430,8 @@ struct Internal {
   // Warmup
   inline void warmup_assign (int lit, Clause *reason);
   void warmup_propagate_beyond_conflict ();
-  int warmup_decide ();
+  int warmup_decide_assumptions (); // only assumptions and constraints
+  void warmup_decide (); // rest of the decisions
   int warmup ();
 
   // Detect strongly connected components in the binary implication graph
@@ -1556,8 +1560,8 @@ struct Internal {
   //
   int already_solved ();
   int restore_clauses ();
-  bool preprocess_round (int round);
-  void preprocess_quickly (bool always);
+  bool preprocess_round (int round, bool&);
+  void preprocess_quickly (bool always, bool&);
   int preprocess (bool always);
   int local_search_round (int round);
   int local_search ();

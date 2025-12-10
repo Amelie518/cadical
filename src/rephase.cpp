@@ -316,8 +316,12 @@ void Internal::rephase () {
       }
   } else if (!stable && (!opts.walk || !opts.walknonstable)) {
     // flipping,(random,best,flipping,best)^\omega
-    if (!count)
-      type = rephase_flipping ();
+    if (!count) {
+      if (stats.searches <= 1)
+        type = rephase_flipping ();
+      else // seems important for BMC due to our unsynchronized rephasing
+        type = rephase_original ();
+    }
     else
       switch ((count - 1) % 4) {
       case 0:
@@ -340,7 +344,7 @@ void Internal::rephase () {
     assert (!stable && opts.walk && opts.walknonstable);
     // flipping,(random,best,walk,flipping,best,walk)^\omega
     if (!count)
-      type = rephase_original ();
+      type = rephase_flipping ();
     else
       switch ((count - 1) % 6) {
       case 0:
@@ -371,7 +375,7 @@ void Internal::rephase () {
   // clear after walk such that random walk can still access the target
   // by using the saved phases
   copy_phases (phases.target);
-  target_assigned = 0;
+  // resetting target_assigned is not in `update_target_and_best`.
 
   int64_t delta = opts.rephaseint * (stats.rephased.total + 1);
   lim.rephase =

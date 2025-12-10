@@ -171,6 +171,8 @@ void Internal::strengthen_clause (Clause *c, int lit) {
   // bump_clause2 (c);
   LOG (c, "strengthened");
   external->check_shrunken_clause (c);
+  if (c->size == 2)
+    new_binary_since_dedup = true;
 }
 
 /*------------------------------------------------------------------------*/

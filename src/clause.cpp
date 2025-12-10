@@ -132,6 +132,8 @@ Clause *Internal::new_clause (bool red, int glue) {
     stats.current.irredundant++;
     stats.added.irredundant++;
   }
+  if (size == 2)
+    new_binary_since_dedup = true;
 
   clauses.push_back (c);
   clause_delete.release ();

@@ -287,73 +287,6 @@ int Internal::backward_true_satisfiable () {
 
 /*------------------------------------------------------------------------*/
 
-// The following two functions test if the formula is a satisfiable horn
-// formula.  Actually the test is slightly more general.  It goes over all
-// clauses and assigns the first positive literal to true and propagates.
-// Already satisfied clauses are of course skipped.  A reverse function
-// is not implemented yet.
-
-int Internal::positive_horn_satisfiable () {
-  VERBOSE (3, "checking that all clauses are positive horn satisfiable");
-  assert (!level);
-  stats.lucky.horn.positive++;
-  int res = lucky_decide_assumptions ();
-  if (res)
-    return res;
-  for (const auto &c : clauses) {
-    if (terminated_asynchronously (10))
-      return unlucky (-1);
-    if (c->garbage)
-      continue;
-    if (c->redundant)
-      continue;
-    int positive_literal = 0;
-    bool satisfied = false;
-    for (const auto &lit : *c) {
-      const signed char tmp = val (lit);
-      if (tmp > 0) {
-        satisfied = true;
-        break;
-      }
-      if (tmp < 0)
-        continue;
-      if (lit < 0)
-        continue;
-      positive_literal = lit;
-      break;
-    }
-    if (satisfied)
-      continue;
-    if (!positive_literal) {
-      LOG (c, "no positive unassigned literal in");
-      return unlucky (0);
-    }
-    assert (positive_literal > 0);
-    LOG (c, "found positive literal %d in", positive_literal);
-    lucky_assume_decision (positive_literal);
-    if (propagate ())
-      continue;
-    LOG ("propagation of positive literal %d leads to conflict",
-         positive_literal);
-    return unlucky (0);
-  }
-  for (auto idx : vars) {
-    if (terminated_asynchronously (10))
-      return unlucky (-1);
-    if (val (idx))
-      continue;
-    lucky_assume_decision (-idx);
-    if (propagate ())
-      continue;
-    LOG ("propagation of remaining literal %d leads to conflict", -idx);
-    return unlucky (0);
-  }
-  VERBOSE (1, "clauses are positive horn satisfied");
-  assert (!conflict);
-  assert (satisfied ());
-  return 10;
-}
-
 int Internal::lucky_decide_assumptions () {
   assert (!level);
   assert (!constraint.size ());
@@ -392,68 +325,6 @@ int Internal::lucky_decide_assumptions () {
   return 0;
 }
 
-int Internal::negative_horn_satisfiable () {
-  assert (!level);
-  VERBOSE (3, "checking that all clauses are negative horn satisfiable");
-  stats.lucky.horn.negative++;
-  int res = lucky_decide_assumptions ();
-  if (res)
-    return res;
-  for (const auto &c : clauses) {
-    if (terminated_asynchronously (10))
-      return unlucky (-1);
-    if (c->garbage)
-      continue;
-    if (c->redundant)
-      continue;
-    int negative_literal = 0;
-    bool satisfied = false;
-    for (const auto &lit : *c) {
-      const signed char tmp = val (lit);
-      if (tmp > 0) {
-        satisfied = true;
-        break;
-      }
-      if (tmp < 0)
-        continue;
-      if (lit > 0)
-        continue;
-      negative_literal = lit;
-      break;
-    }
-    if (satisfied)
-      continue;
-    if (!negative_literal) {
-      if (level > 0)
-        backtrack_without_updating_phases ();
-      LOG (c, "no negative unassigned literal in");
-      return unlucky (0);
-    }
-    assert (negative_literal < 0);
-    LOG (c, "found negative literal %d in", negative_literal);
-    lucky_assume_decision (negative_literal);
-    if (propagate ())
-      continue;
-    LOG ("propagation of negative literal %d leads to conflict",
-         negative_literal);
-    return unlucky (0);
-  }
-  for (auto idx : vars) {
-    if (terminated_asynchronously (10))
-      return unlucky (-1);
-    if (val (idx))
-      continue;
-    lucky_assume_decision (idx);
-    if (propagate ())
-      continue;
-    LOG ("propagation of remaining literal %d leads to conflict", idx);
-    return unlucky (0);
-  }
-  VERBOSE (1, "clauses are negative horn satisfied");
-  assert (!conflict);
-  assert (satisfied ());
-  return 10;
-}
 
 /*------------------------------------------------------------------------*/
 
@@ -489,7 +360,7 @@ int Internal::lucky_phases () {
   const int64_t active_initially = stats.active;
 #endif
 
-  constexpr int schedule_size = 6;
+  constexpr int schedule_size = 4;
   std::array<std::function<int ()>, schedule_size > schedule;
   int schedule_pos = 0;
 
@@ -516,9 +387,6 @@ int Internal::lucky_phases () {
       schedule[schedule_pos++] = [this]() {return backward_true_satisfiable();};
       schedule[schedule_pos++] = [this]() {return backward_false_satisfiable();};
     }
-
-    schedule[schedule_pos++] = [this]() {return positive_horn_satisfiable();};
-    schedule[schedule_pos++] = [this]() {return negative_horn_satisfiable();};
   } else {
     if (!opts.reverse) {
       schedule[schedule_pos++] = [this]() {return backward_false_satisfiable();};
@@ -531,8 +399,6 @@ int Internal::lucky_phases () {
       schedule[schedule_pos++] = [this]() {return backward_false_satisfiable();};
       schedule[schedule_pos++] = [this]() {return backward_true_satisfiable();};
     }
-    schedule[schedule_pos++] = [this]() {return negative_horn_satisfiable();};
-    schedule[schedule_pos++] = [this]() {return positive_horn_satisfiable();};
   }
   assert (schedule_pos == schedule_size);
 

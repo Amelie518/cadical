@@ -896,8 +896,6 @@ struct Internal {
   int forward_true_satisfiable ();
   int backward_false_satisfiable ();
   int backward_true_satisfiable ();
-  int positive_horn_satisfiable ();
-  int negative_horn_satisfiable ();
 
   // Asynchronous terminating check.
   //

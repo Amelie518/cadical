@@ -98,6 +98,8 @@ int Internal::next_random_decision () {
     */
     if (val (idx))
       continue;
+    if (flags (idx).unused ())
+      continue;
     return idx;
   }
   assert (false);
@@ -191,6 +193,8 @@ void Internal::new_trail_level (int lit) {
 /*------------------------------------------------------------------------*/
 
 bool Internal::satisfied () {
+  check_var_stats ();
+  LOG ("checking satisfied");
   if ((size_t) level < assumptions.size () + (!!constraint.size ()))
     return false;
   if (num_assigned + stats.unused < (size_t) max_var)
@@ -340,12 +344,14 @@ int Internal::decide () {
         const bool target = (opts.target > 1 || (stable && opts.target));
         decision = decide_phase (idx, target);
       }
+      assert (!flags (decision).unused());
       search_assume_decision (decision);
     }
   }
   if (res)
     marked_failed = false;
   STOP (decide);
+  check_var_stats();
   return res;
 }
 } // namespace CaDiCaL

@@ -248,7 +248,8 @@ int Internal::lucky_fixed_test (Iterator begin, Iterator end, signed char pol, s
   int res = lucky_decide_assumptions ();
   if (res)
     return res;
-  for (auto idx : vars) {
+  for (auto it = begin; it != end; ++it) {
+    const int idx = *it;
     if (flags (idx).unused ())
       continue;
   START:
@@ -399,6 +400,8 @@ int Internal::positive_horn_satisfiable () {
       return unlucky (-1);
     if (val (idx))
       continue;
+    if (flags (idx).unused())
+      continue;
     lucky_assume_decision (-idx);
     if (propagate ())
       continue;
@@ -499,6 +502,8 @@ int Internal::negative_horn_satisfiable () {
     if (terminated_asynchronously (10))
       return unlucky (-1);
     if (val (idx))
+      continue;
+    if (flags (idx).unused())
       continue;
     lucky_assume_decision (idx);
     if (propagate ())

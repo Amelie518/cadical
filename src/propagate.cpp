@@ -104,6 +104,7 @@ inline void Internal::search_assign (int lit, Clause *reason) {
   if (level)
     require_mode (SEARCH);
 
+  assert (!flags (lit).unused());
   const int idx = vidx (lit);
   const bool from_external = reason == external_reason;
   assert (!val (idx));

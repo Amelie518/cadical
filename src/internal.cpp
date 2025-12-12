@@ -208,11 +208,6 @@ void Internal::reserve_vars (int new_min_vsize) {
     enlarge_only (wtab, 2 * new_vsize);
   LOG ("reserving %d new internal variables, reserved so far: %d", new_vars, max_var);
   vsize = new_vsize;
-  /*
-stats.unused += new_vars;
-  stats.inactive += new_vars;
-  max_var = new_min_vsize;
-*/
 }
 
 void Internal::add_original_lit (int lit) {
@@ -1323,7 +1318,7 @@ void Internal::activating_all_new_imported_literals () {
   LOG (imports, "declaring all new variables");
   if (imports.empty ())
     return;
-  if (opts.varpindexorder)
+  if (opts.varindexorder)
     std::sort (begin (imports), end (imports), [&] (int l, int o) {return vidx (l) < vidx (o);});
   if (!opts.varprioritizefirst)
     std::reverse (begin (imports), end (imports));
@@ -1354,6 +1349,7 @@ void Internal::activating_all_new_imported_literals () {
 
   stats.vars += imports.size ();
   imports.clear ();
+  check_var_stats ();
 #ifndef NDEBUG
   for (auto c : clauses) {
     if (c->garbage)

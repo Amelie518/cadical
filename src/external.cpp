@@ -34,7 +34,16 @@ void External::enlarge (int new_max_var) {
 int External::declare_var (int new_var, bool extension) {
   assert ((size_t)new_var < e2i.size());
   if (!e2i[new_var]) {
-    int ilit = internal->max_var+1;
+    int ilit;
+    if (!internal->opts.varindexorder)
+      ilit = internal->max_var+1;
+    else {
+      ilit = new_var;
+      if (internal->i2e.size () > (size_t)ilit && internal->i2e[ilit]) {
+        LOG ("the slot is already used by %d, giving the next available name", internal->i2e[ilit]);
+        ilit = internal->max_var+1;
+      }
+    }
     if (internal->i2e.size () <= (size_t)ilit) {
       reserve_at_least (internal->i2e, ilit + 1);
       internal->i2e.resize (ilit + 1);
@@ -59,9 +68,7 @@ void External::init (int new_max_var, bool extension) {
     return;
   }
   int new_vars = new_max_var - max_var;
-  int old_internal_max_var = internal->max_var;
   internal->reserve_vars (new_max_var);
-  assert (max_var >= old_internal_max_var);
 
   LOG ("initialized %d external variables", new_vars);
   reserve_at_least (ext_units, 2 * new_max_var + 2);

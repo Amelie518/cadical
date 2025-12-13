@@ -1330,9 +1330,9 @@ struct Call {
 
   Type type; // Explicit typing.
 
-  int arg;     // Argument if necessary.
   int64_t res; // Compute result if any.
-  char *name;  // Option name for 'set' and 'config'
+  char *name = nullptr;  // Option name for 'set' and 'config'
+  int arg;     // Argument if necessary.
   int val;     // Option value for 'set'.
 
   Call (Type t, int a = 0, int r = 0, const char *o = 0, int v = 0)

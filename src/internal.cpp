@@ -95,18 +95,13 @@ Internal::~Internal () {
 // debugging is harder since literals occur only encoded in clauses.
 // The main draw-back of our solution is that we have to shift the memory
 // and access it through negative indices, which looks less clean (but still
-// as far I can tell is properly defined C / C++).   You might get a warning
-// by static analyzers though.  Clang with '--analyze' thought that this
-// idiom would generate a memory leak thus we use the following dummy.
-
-static signed char *ignore_clang_analyze_memory_leak_warning;
+// as far I can tell is properly defined C / C++).
 
 void Internal::enlarge_vals (size_t new_vsize) {
   signed char *new_vals;
   const size_t bytes = 2u * new_vsize;
   new_vals = new signed char[bytes]; // g++-4.8 does not like ... { 0 };
   memset (new_vals, 0, bytes);
-  ignore_clang_analyze_memory_leak_warning = new_vals;
   new_vals += new_vsize;
 
   if (vals) {
@@ -516,6 +511,9 @@ void Internal::init_preprocessing_limits () {
     lim.preprocessing = inc.preprocessing;
     LOG ("limiting to %" PRId64 " preprocessing rounds", lim.preprocessing);
   }
+#ifndef LOGGING
+  (void) mode;
+#endif
 }
 
 void Internal::init_search_limits () {

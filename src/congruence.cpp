@@ -2024,12 +2024,13 @@ bool Closure::merge_literals_equivalence (int lit, int other, Clause *c1,
     assert (!val_other);
     LOG ("merging assigned %d and unassigned %d", lit, other);
     const int unit = (val_lit < 0) ? -other : other;
-    if (internal->lrat)
-      lrat_chain.push_back (internal->unit_id (unit));
-    if (val_lit < 0)
-      lrat_chain.push_back (c2->id);
-    else
-      lrat_chain.push_back (c1->id);
+      if (internal->lrat) {
+        lrat_chain.push_back (internal->unit_id (unit));
+      if (val_lit < 0)
+        lrat_chain.push_back (id2);
+      else
+        lrat_chain.push_back (id1);
+    }
     learn_congruence_unit (unit);
     return false;
   }
@@ -2037,13 +2038,14 @@ bool Closure::merge_literals_equivalence (int lit, int other, Clause *c1,
   if (!val_lit && val_other) {
     LOG ("merging assigned %d and unassigned %d", other, lit);
     const int unit = (val_other < 0) ? -lit : lit;
-    if (internal->lrat)
+    if (internal->lrat) {
       lrat_chain.push_back (
           internal->unit_id (val_other < 0 ? -other : other));
-    if (val_lit < 0)
-      lrat_chain.push_back (c1->id);
-    else
-      lrat_chain.push_back (c2->id);
+      if (val_lit < 0)
+        lrat_chain.push_back (id1);
+      else
+        lrat_chain.push_back (id2);
+    }
     learn_congruence_unit (unit);
     return false;
   }
@@ -2655,10 +2657,9 @@ void Closure::update_and_gate (Gate *g, GatesTable::iterator it, int src,
     if (internal->lrat)
       learn_congruence_unit_falsifies_lrat_chain (g, src, dst, clashing,
                                                   falsifies, unit);
-    int other = -unit;
     if (g->degenerated_gate == Special_Gate::DEGENERATED_AND ||
         g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE) {
-      other = find_eager_representative_and_compress (-unit);
+      int other = find_eager_representative_and_compress (-unit);
       if (internal->lrat && -unit != other) {
         assert (internal->lrat_chain.empty ());
         internal->lrat_chain.push_back (eager_representative_id (-unit));
@@ -3251,6 +3252,7 @@ void Closure::check_not_tmp_binary_clause (Clause *c) {
 #ifndef NDEBUG
   assert (internal->lrat);
   assert (internal->lrat_chain.empty ());
+  assert (c);
   assert (c->size == 2);
   if (internal->val (c->literals[0]) || internal->val (c->literals[1]))
     return;
@@ -3772,7 +3774,7 @@ Gate *Closure::find_xor_gate (const Gate *const g) {
 void Closure::reset_xor_gate_extraction () { internal->clear_occs (); }
 
 bool Closure::normalize_ite_lits_gate (Gate *g) {
-  auto &rhs = g->rhs;
+  int *rhs = g->rhs;
   assert (g->arity () == 3);
   if (internal->lrat)
     check_correct_ite_flags (g);
@@ -4032,7 +4034,7 @@ void Closure::add_xor_matching_proof_chain (
       unsimplified.resize (unsimplified.size () - 2);
       if (internal->lrat) {
         int32_t offset = unsimplified.empty () ? 0 : 1 << (unsimplified.size () - 1);
-        int32_t rest = n &= ~offset;
+        int32_t rest = (n & ~offset);
         first_tmp.push_back (LitIdPair (rest, id1));
         n = number_from_xor_reason_reversed (unsimplified);
         lrat_chain.clear ();
@@ -4049,7 +4051,7 @@ void Closure::add_xor_matching_proof_chain (
       if (internal->lrat) {
         lrat_chain.clear ();
         int32_t offset = unsimplified.empty () ? 0 : 1 << (unsimplified.size () - 1);
-        int32_t rest = n &= ~offset;
+        int32_t rest = (n & ~offset);
         second_tmp.push_back (LitIdPair (rest, id2));
       }
       inc_lits (unsimplified);
@@ -6701,7 +6703,7 @@ void Closure::simplify_ite_gate (Gate *g) {
   assert (g->arity () == 3);
   bool garbage = true;
   int lhs = g->lhs;
-  auto &rhs = g->rhs;
+  int *rhs = g->rhs;
   const int cond = rhs[0];
   const int then_lit = rhs[1];
   const int else_lit = rhs[2];

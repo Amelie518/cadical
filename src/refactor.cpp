@@ -229,13 +229,18 @@ void Internal::refactor_strengthen (Clause *c, int64_t &ticks) {
 // We cannot use the stack-based implementation of Kissat, because we need
 // to iterate over the conflict in topological ordering to produce a valid
 // LRAT proof
-void Internal::refactor_analyze (Clause *start) {
+void Internal::refactor_analyze (Clause *start, int subsume) {
   const auto &t = &trail; // normal trail, so next_trail is wrong
   int i = t->size ();     // Start at end-of-trail.
   Clause *reason = start;
   assert (reason);
   assert (!trail.empty ());
-  int uip = trail.back ();
+  int uip = subsume;
+  if (subsume) {
+    clause.push_back (subsume);
+  }
+  if (lrat)
+    lrat_chain.push_back (reason->id);
 
   while (i >= 0) {
     if (reason) {
@@ -285,6 +290,8 @@ void Internal::refactor_analyze (Clause *start) {
     if (lrat && reason)
       lrat_chain.push_back (reason->id);
   }
+  if (lrat)
+    std::reverse (lrat_chain.begin (), lrat_chain.end ());
 }
 
 void Internal::refactor_shrink_candidate (refactor_candidate cand,
@@ -308,6 +315,7 @@ void Internal::refactor_shrink_candidate (refactor_candidate cand,
   if (proof) {
     // take the two gate clauses that are needed (fate is not ordered)
     for (auto c : fate.clauses) {
+      LOG (c, "test fate clause");
       bool g1 = true;
       bool g2 = true;
       for (auto &lit : *c) {
@@ -320,12 +328,16 @@ void Internal::refactor_shrink_candidate (refactor_candidate cand,
           g2 = false;
         }
       }
-      if (g1)
+      if (g1) {
         gate_1 = c;
-      else if (g2)
+      } else if (g2) {
         gate_2 = c;
+      }
     }
     assert (gate_1 && gate_2);
+    LOG (gate_1, "gate 1 clause");
+    LOG (gate_2, "gate 2 clause");
+    LOG (tmp_clause_1, "tmp 1 clause");
 
     proof->add_derived_clause (tmp_id_1, true, tmp_clause_1, lrat_chain);
     lrat_chain.clear ();
@@ -419,7 +431,8 @@ bool Internal::refactor_clause (Refactoring &refactoring,
   // propagating it.  If a conflict occurs or another literal in the
   // clause becomes assigned during propagation, we can stop.
   //
-  LOG (c, "refactoring checking");
+  LOG (c, "refactoring checking, fate[%d=ITE(%d,%d,%d)]", fate.definition,
+       fate.condition, fate.true_branch, fate.false_branch);
   stats.refactorchecks++;
 
   // If the decision 'level' is non-zero, then we can reuse decisions for
@@ -434,7 +447,7 @@ bool Internal::refactor_clause (Refactoring &refactoring,
   if (level) {
     int bt_level = 0;
     if (cand.negcon) {
-      if (control[0].decision == fate.condition)
+      if (control[0].decision == -fate.condition)
         bt_level = 1;
       if (cand.negdef) {
         if (bt_level && level > 1 &&
@@ -446,7 +459,7 @@ bool Internal::refactor_clause (Refactoring &refactoring,
           bt_level = 2;
       }
     } else {
-      if (control[0].decision == -fate.condition)
+      if (control[0].decision == fate.condition)
         bt_level = 1;
       if (cand.negdef) {
         if (bt_level && level > 1 &&
@@ -482,7 +495,7 @@ bool Internal::refactor_clause (Refactoring &refactoring,
 
   if (!level) {
     int lit = fate.condition;
-    if (!cand.negcon)
+    if (cand.negcon)
       lit = -lit;
     const signed char tmp = val (lit);
     if (tmp) {
@@ -490,7 +503,7 @@ bool Internal::refactor_clause (Refactoring &refactoring,
       return false;
     }
     stats.refactordecs++;
-    refactor_assume (-lit);
+    refactor_assume (lit);
     LOG ("condition decision %d", lit);
     if (!refactor_propagate (ticks)) {
       // TODO: conflict analysis
@@ -501,13 +514,15 @@ bool Internal::refactor_clause (Refactoring &refactoring,
     int lit = -fate.false_branch;
     if (cand.negdef)
       lit = -fate.true_branch;
+    if (!cand.negcon)
+      lit = -lit;
     const signed char tmp = val (lit);
     if (tmp) {
       LOG ("branch %d is implied by condition (or root-level)", lit);
       return false;
     }
     stats.refactordecs++;
-    refactor_assume (-lit);
+    refactor_assume (lit);
     LOG ("branch decision %d", lit);
     if (!refactor_propagate (ticks)) {
       // TODO: conflict analysis
@@ -575,7 +590,7 @@ bool Internal::refactor_clause (Refactoring &refactoring,
     return false;
 
   // fills clause stack and lrat_chain (if applicable).
-  refactor_analyze (reason);
+  refactor_analyze (reason, subsume);
 
   // TODO: learn temporary clauses and use gate clauses to shrink candidate
   refactor_shrink_candidate (cand, fate);

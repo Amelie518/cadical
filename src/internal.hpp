@@ -1350,14 +1350,13 @@ struct Internal {
   // refactor
   //
   void refactor_initialize (Refactoring &vivifier, int64_t &ticks);
-  void refactor_analyze_redundant (Refactoring &, Clause *start, bool &);
   void refactor_chain_for_units (int lit, Clause *reason);
   void refactor_strengthen (Clause *candidate, int64_t &);
   void refactor_assign (int lit, Clause *);
   void refactor_assume (int lit);
   bool refactor_propagate (int64_t &);
   bool refactor_clause (Refactoring &, refactor_candidate);
-  void refactor_analyze (Clause *start);
+  void refactor_analyze (Clause *start, int);
   void refactor_shrink_candidate (refactor_candidate, refactor_gate);
   void refactor_round (Refactoring &, int64_t delta);
   bool refactor ();

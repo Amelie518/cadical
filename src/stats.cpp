@@ -52,7 +52,7 @@ void Stats::print (Internal *internal) {
   propagations += stats.propagations.transred;
   propagations += stats.propagations.vivify;
 
-  int64_t vivified = stats.vivifysubs + stats.vivifystrs;
+  int64_t vivified = stats.vivifysubs + stats.vivifystrs + stats.vivifyimplied;
   int64_t searchticks = stats.ticks.search[0] + stats.ticks.search[1];
   int64_t inprobeticks = stats.ticks.vivify + stats.ticks.probe +
                          stats.ticks.factor + stats.ticks.ternary +

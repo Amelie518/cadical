@@ -766,8 +766,6 @@ void Internal::preprocess_quickly (bool always, bool &triggered) {
          "starting with %" PRId64 " variables and %" PRId64 " clauses",
          before.vars, before.clauses);
 
-  if (opts.deduplicateallinit && stats.deduplicatedinitrounds)
-    deduplicate_all_clauses();
   if (extract_gates (true))
     decompose ();
   binary_clauses_backbone ();
@@ -800,6 +798,9 @@ int Internal::preprocess (bool always) {
   if (res)
     return res;
   bool preprecessing_triggered = false;
+
+  if (opts.deduplicateallinit && !stats.deduplicatedinitrounds)
+    deduplicate_all_clauses();
   preprocess_quickly (always, preprecessing_triggered);
   for (int i = 0; i < lim.preprocessing; i++)
     if (!preprocess_round (i, preprecessing_triggered))

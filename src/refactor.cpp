@@ -159,69 +159,6 @@ bool Internal::refactor_propagate (int64_t &ticks) {
   return !conflict;
 }
 
-// Common code to actually strengthen a candidate clause.  The resulting
-// strengthened clause is communicated through the global 'clause'.
-
-void Internal::refactor_strengthen (Clause *c, int64_t &ticks) {
-
-  assert (!clause.empty ());
-
-  if (clause.size () == 1) {
-
-    backtrack_without_updating_phases ();
-    const int unit = clause[0];
-    LOG (c, "refactoring shrunken to unit %d", unit);
-    assert (!val (unit));
-    assign_unit (unit);
-    // lrat_chain.clear ();   done in search_assign
-    stats.refactorunits++;
-
-    bool ok = refactor_propagate (ticks);
-    if (!ok)
-      learn_empty_clause ();
-
-  } else {
-
-    // See explanation before 'refactor_better_watch' above.
-    //
-
-    int new_level = level;
-
-    const int lit0 = clause[0];
-    signed char val0 = val (lit0);
-    if (val0 < 0) {
-      const int level0 = var (lit0).level;
-      LOG ("1st watch %d negative at level %d", lit0, level0);
-      new_level = level0 - 1;
-    }
-
-    const int lit1 = clause[1];
-    const signed char val1 = val (lit1);
-    if (val1 < 0 && !(val0 > 0 && var (lit0).level <= var (lit1).level)) {
-      const int level1 = var (lit1).level;
-      LOG ("2nd watch %d negative at level %d", lit1, level1);
-      new_level = level1 - 1;
-    }
-
-    assert (new_level >= 0);
-    if (new_level < level)
-      backtrack (new_level);
-
-    assert (val (lit0) >= 0);
-    assert (val (lit1) >= 0 || (val (lit0) > 0 && val (lit1) < 0 &&
-                                var (lit0).level <= var (lit1).level));
-
-    Clause *d = new_clause_as (c);
-    LOG (c, "before refactoring");
-    LOG (d, "after refactoring");
-    (void) d;
-  }
-  clause.clear ();
-  mark_garbage (c);
-  lrat_chain.clear ();
-  ++stats.refactorstrs;
-}
-
 /*------------------------------------------------------------------------*/
 
 // Conflict analysis from 'start' which learns a decision only clause.
@@ -298,9 +235,13 @@ void Internal::refactor_shrink_candidate (refactor_candidate cand,
                                           refactor_gate fate) {
   const int definition = cand.negdef ? -fate.definition : fate.definition;
   const int cand_branch =
-      cand.negcon ? fate.true_branch : fate.false_branch;
+      !cand.negcon  ? cand.negdef ? -fate.true_branch : fate.true_branch
+      : cand.negdef ? -fate.false_branch
+                    : fate.false_branch;
   const int other_branch =
-      !cand.negcon ? fate.true_branch : fate.false_branch;
+      cand.negcon   ? cand.negdef ? -fate.true_branch : fate.true_branch
+      : cand.negdef ? -fate.false_branch
+                    : fate.false_branch;
   const int condition = cand.negcon ? -fate.condition : fate.condition;
   const int64_t tmp_id_1 = ++clause_id;
   Clause *gate_1 = 0;
@@ -323,15 +264,15 @@ void Internal::refactor_shrink_candidate (refactor_candidate cand,
           g1 = false;
           g2 = false;
         } else if (lit == cand_branch) {
-          g1 = false;
-        } else if (lit == other_branch) {
           g2 = false;
+        } else if (lit == other_branch) {
+          g1 = false;
         }
       }
       if (g1) {
-        gate_1 = c;
-      } else if (g2) {
         gate_2 = c;
+      } else if (g2) {
+        gate_1 = c;
       }
     }
     assert (gate_1 && gate_2);
@@ -411,14 +352,18 @@ bool Internal::refactor_clause (Refactoring &refactoring,
   ticks++;
   const int candidate_condition =
       cand.negcon ? -fate.condition : fate.condition;
+  int candidate_branch = cand.negdef ? fate.false_branch : fate.true_branch;
   int not_candidate_branch =
-      cand.negdef ? -fate.true_branch : -fate.false_branch;
-  int candidate_branch =
-      !cand.negdef ? fate.true_branch : fate.false_branch;
-  if (cand.negcon) {
-    not_candidate_branch = -not_candidate_branch;
+      cand.negdef ? fate.true_branch : fate.false_branch;
+  if (!cand.negcon)
     candidate_branch = -candidate_branch;
-  }
+  else
+    not_candidate_branch = -not_candidate_branch;
+
+  LOG (c, "definition %d (%s), condition %d (%s), branch %d (other %d)",
+       fate.definition, cand.negdef ? "negative" : "positive",
+       fate.condition, cand.negcon ? "negative" : "positive",
+       candidate_branch, not_candidate_branch);
 
   // First check whether the candidate clause is already satisfied and at
   // the same time copy its non fixed literals to 'sorted'.  The literals
@@ -434,6 +379,9 @@ bool Internal::refactor_clause (Refactoring &refactoring,
       mark_garbage (c);
       return false;
     }
+    assert (lit != -candidate_condition);
+    // assert (lit != -candidate_branch); TODO: ITE bug maybe (trace
+    // succeeds though)
   }
 
   // The actual refactoring checking is performed here, by assuming the
@@ -495,6 +443,7 @@ bool Internal::refactor_clause (Refactoring &refactoring,
     LOG ("condition decision %d", lit);
     if (!refactor_propagate (ticks)) {
       // TODO: conflict analysis
+      conflict = nullptr;
       return false;
     }
   }
@@ -510,6 +459,7 @@ bool Internal::refactor_clause (Refactoring &refactoring,
     LOG ("branch decision %d", lit);
     if (!refactor_propagate (ticks)) {
       // TODO: conflict analysis
+      conflict = nullptr;
       return false;
     }
   }
@@ -570,8 +520,9 @@ bool Internal::refactor_clause (Refactoring &refactoring,
   Clause *reason = conflict;
   if (subsume)
     reason = var (subsume).reason;
-  if (!reason)
+  if (!reason) {
     return false;
+  }
 
   // fills clause stack and lrat_chain (if applicable).
   refactor_analyze (reason, subsume);
@@ -658,7 +609,8 @@ void Internal::refactor_initialize (Refactoring &refactoring,
       ++ticks;
       size_t found_true = 0;
       size_t found_false = 0;
-      bool negdef = 0;
+      bool negdef_true = 0;
+      bool negdef_false = 0;
       bool skip = false;
       for (auto &lit : *c) {
         if (lit == fg.definition) {
@@ -671,13 +623,13 @@ void Internal::refactor_initialize (Refactoring &refactoring,
           found_false++;
         if (lit == fg.true_branch) {
           found_true++;
-          negdef = true;
+          negdef_true = true;
         }
         if (lit == -fg.true_branch)
           found_true++;
         if (lit == fg.false_branch) {
           found_false++;
-          negdef = true;
+          negdef_false = true;
         }
         if (lit == -fg.false_branch)
           found_false++;
@@ -690,7 +642,8 @@ void Internal::refactor_initialize (Refactoring &refactoring,
         refactoring.candidates.back ().candidate = c;
         refactoring.candidates.back ().index = index;
         refactoring.candidates.back ().negcon = found_true != 2;
-        refactoring.candidates.back ().negdef = negdef;
+        refactoring.candidates.back ().negdef =
+            found_true == 2 ? negdef_true : negdef_false;
       }
     }
     index++;

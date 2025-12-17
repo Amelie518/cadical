@@ -53,6 +53,7 @@ static const char *USAGE =
 "In order to let the test execute '<r>' runs (starting from '<seed>') use:\n"
 "\n"
 "  -L[ ]<r>          execute '<r>' runs\n"
+"  -X[ ]<r>          execute '<r>' bugs\n"
 "\n"
 "The output trace is not shrunken if it is not failing.  However, before\n"
 "it is written it is executed, unless '--do-not-execute' is specified:\n"
@@ -2150,8 +2151,8 @@ public:
         // They are (ideally) are executed already
         if (c->type == Call::LEMMA)
           continue;
-          // if (c->type == Call::CONTINUE)
-          //   continue;
+        // if (c->type == Call::CONTINUE)
+        //   continue;
 #ifdef MOBICAL_MEMORY
         if (c->type == Call::MAXALLOC) {
           memory_bad_alloc = c->val;
@@ -3604,12 +3605,12 @@ bool Trace::shrink_segments (Trace::Segments &segments, int expected) {
       for (size_t i = 0; i < size (); i++)
         if (!ignore[i])
           tmp.push_back (calls[i]->copy ());
-      progress ();
       if (tmp.fork_and_execute () != expected) { // failed
         for (size_t i = l; i < r; i++)
           removed[i] = saved[i];
       } else {
         res = true; // succeeded to shrink
+        mobical.notify (tmp);
       }
     }
     if (granularity == 1)
@@ -4570,7 +4571,7 @@ void Reader::parse () {
         error ("invalid literal '%d' as argument to 'val'", lit);
       if (second && !parse_int_str (second, val))
         error ("invalid second argument '%s' to 'val'", second);
-      if (second && val != -1 && val != 0 && val != -1)
+      if (second && val != -1 && val != 0 && val != 1)
         error ("invalid result argument '%d' to 'val", val);
       if (second)
         c = new ValCall (lit, val);
@@ -4930,6 +4931,7 @@ int Mobical::main (int argc, char **argv) {
   const char *output_path = 0;
 
   int64_t limit = -1;
+  int64_t bug_limit = -1;
 
   // Error message in 'die' also uses colors.
   //
@@ -5023,6 +5025,19 @@ int Mobical::main (int argc, char **argv) {
         die ("multiple '-L' options (try '-h')");
       if (!is_unsigned_str (argv[i] + 2) ||
           (limit = atol (argv[i] + 2)) < 0)
+        die ("invalid argument in '%s' (try '-h')", argv[i]);
+    } else if (!strcmp (argv[i], "-X")) {
+      if (bug_limit >= 0)
+        die ("multiple '-X' options (try '-h')");
+      if (++i == argc)
+        die ("argument to '-X' missing (try '-h')");
+      if (!is_unsigned_str (argv[i]) || (bug_limit = atol (argv[i])) < 0)
+        die ("invalid argument '%s' to '-X' (try '-h')", argv[i]);
+    } else if (argv[i][0] == '-' && argv[i][1] == 'X') {
+      if (limit >= 0)
+        die ("multiple '-X' options (try '-h')");
+      if (!is_unsigned_str (argv[i] + 2) ||
+          (bug_limit = atol (argv[i] + 2)) < 0)
         die ("invalid argument in '%s' (try '-h')", argv[i]);
     } else if (!strcmp (argv[i], "--time")) {
       if (++i == argc)
@@ -5385,7 +5400,8 @@ int Mobical::main (int argc, char **argv) {
     terminal.cursor (false);
 
     for (traces = 1; traces <= limit; traces++) {
-
+      if (Trace::failed >= bug_limit)
+        break;
       if (!donot.seeds) {
         prefix ();
         cerr << ' ' << left << setw (15) << traces << ' ';

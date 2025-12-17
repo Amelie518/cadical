@@ -211,7 +211,7 @@ struct deduplicate_flush_smaller {
 //
 void Internal::deduplicate_all_clauses () {
   assert (!level);
-  reset_watches ();
+  clear_watches ();
 
   mark_satisfied_clauses_as_garbage ();
   garbage_collection ();
@@ -270,7 +270,6 @@ void Internal::deduplicate_all_clauses () {
   stats.subsumed += subsumed;
   stats.deduplicatedinit += subsumed;
   check_clause_stats();
-  init_watches();
   connect_watches();
   report ('d', !opts.reportall && !subsumed);
 }

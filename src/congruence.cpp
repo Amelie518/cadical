@@ -2577,7 +2577,7 @@ void Closure::update_and_gate (Gate *g, GatesTable::iterator it, int src,
   bool garbage = true;
   if (g->arity () == 1 && internal->val (g->lhs) &&
       internal->val (g->lhs) == internal->val (g->rhs[0])) {
-    g->garbage = true;
+    mark_garbage(g);
     return;
   }
   if (falsifies || clashing) {
@@ -2974,6 +2974,7 @@ Gate *Closure::new_and_gate (Clause *base_clause, int lhs) {
       LOG ("found merged literals");
       ++internal->stats.congruence.ands;
     }
+    delete g;
     return nullptr;
   } else {
     g->rhs = {rhs};
@@ -6038,7 +6039,7 @@ void Closure::rewrite_ite_gate (Gate *g, int dst, int src) {
           for (int j = 0; j < 2; ++i, ++j) {
             assert (i <= j);
             const int lit = rhs[i] = rhs[j];
-            const char v = internal->val (lit);
+            const signed char v = internal->val (lit);
             if (v > 0) {
               --i;
               negated = !negated;

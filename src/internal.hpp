@@ -271,6 +271,7 @@ struct Internal {
   vector<int> minimized;     // removable or poison in 'minimize'
   vector<int> shrinkable;    // removable or poison in 'shrink'
   Reap reap;                 // radix heap for shrink
+  bool factorcheckdone=0;    // boolean indicated that we have done the resize 1
 
   vector<int> sweep_schedule; // remember sweep varibles to reschedule
   bool sweep_incomplete;      // sweep
@@ -1015,6 +1016,10 @@ struct Internal {
   bool vivify_shrinkable (const std::vector<int> &sorted, Clause *c);
   void vivify_round (Vivifier &, int64_t delta);
   bool vivify ();
+
+  // Deduplicating clauses
+  //
+  void deduplicate_all_clauses ();
 
   // Compacting (shrinking internal variable tables) in 'compact.cpp'
   //

@@ -1418,6 +1418,7 @@ struct InitCall : public Call {
   InitCall () : Call (INIT) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
     s = new Solver ();
+    s->set ("factorcheck", 0);
     assert (extendmap.map.empty ());
     (void) (extendmap);
   }
@@ -1513,14 +1514,14 @@ struct DeclareMoreVariablesCall : public Call {
   const char *keyword () { return "declare_more_variables"; }
 };
 
-struct DeclareMoreVariableCall : public Call {
-  DeclareMoreVariableCall () : Call (RESIZE) {}
+struct DeclareOneMoreVariableCall : public Call {
+  DeclareOneMoreVariableCall () : Call (RESIZE) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
     s->declare_one_more_variable ();
     (void) extendmap;
   }
   void print (ostream &o) { o << "declare_one_more_variable" << endl; }
-  Call *copy () { return new DeclareMoreVariableCall (); }
+  Call *copy () { return new DeclareOneMoreVariableCall (); }
   const char *keyword () { return "declare_one_more_variable"; }
 };
 
@@ -1549,6 +1550,7 @@ struct ConfigureCall : public Call {
   ConfigureCall (const char *o) : Call (CONFIGURE, 0, 0, o) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
     s->configure (name);
+    s->set ("factorcheck", false);
     (void) (extendmap);
   }
   void print (ostream &o) { o << "configure " << name << endl; }
@@ -2439,12 +2441,12 @@ Call *Trace::find_option_by_name (const char *name) {
 // Some options are never part of generated traces.
 //
 bool Trace::ignored_option (const char *name) {
-
   if (!strcmp (name, "checkfrozen"))
     return true;
   if (!strcmp (name, "terminateint"))
     return true;
-
+  if (!strcmp (name, "factorcheck"))
+    return true;
   return false;
 }
 
@@ -2655,7 +2657,7 @@ void Trace::generate_declare_more_variables (Random &random) {
 void Trace::generate_declare_one_more_variable (Random &random) {
   if (random.generate_double () > 0.01)
     return;
-  push_back (new DeclareMoreVariableCall ());
+  push_back (new DeclareOneMoreVariableCall ());
 }
 
 /*------------------------------------------------------------------------*/
@@ -4721,6 +4723,8 @@ void Reader::parse () {
       c = new ImpliedCall ();
     } else if (!strcmp (keyword, "reset_assumptions")) {
       c = new ResetAssumptionsCall ();
+    } else if (!strcmp (keyword, "declare_one_more_variable")) {
+      c = new DeclareOneMoreVariableCall ();
     } else
       error ("invalid keyword '%s'", keyword);
 

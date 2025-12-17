@@ -78,6 +78,7 @@ OPTION( covermineff,       0,  0,2e9,1,0,1, "minimum cover efficiency") \
 OPTION( decompose,         1,  0,  1,0,1,1, "decompose BIG in SCCs and ELS") \
 OPTION( decomposerounds,   2,  1, 16,1,0,1, "number of decompose rounds") \
 OPTION( deduplicate,       1,  0,  1,0,1,1, "remove duplicated binaries") \
+OPTION( deduplicateallinit,0,  0,  1,0,1,1, "remove duplicated clauses once before solving") \
 OPTION( eagersubsume,      1,  0,  1,0,1,1, "subsume recently learned") \
 OPTION( eagersubsumelim,  20,  1,1e3,0,0,1, "limit on subsumed candidates") \
 OPTION( elim,              1,  0,  1,0,1,1, "bounded variable elimination") \
@@ -121,6 +122,7 @@ OPTION( factorboundelim,   0,  0,  1,0,0,1, "add maximal elimbound to factorboun
 OPTION( factorbumpheap,    1,  0,  2,0,0,1, "score extension variables in heap [0: low as in kissat (do nothing), 1: based on definition, 2: high]") \
 OPTION( factorbumpqueue,   1,  0,  2,0,0,1, "score extension variables in queue [0: low as in kissat, 1: based on definition, 2: high (do nothing)]") \
 OPTION( factorcandrounds,  2,  0,2e9,0,0,1, "candidates reduction rounds (is skipped with factorxor)") \
+OPTION( factorcheck,       1,  0,  1,0,0,1, "API checks that variables have been declared") \
 OPTION( factordelay,       4,  0, 12,0,0,1, "delay bounded variable addition between eliminations") \
 OPTION( factoreffort,     75,  0,1e6,0,0,1, "relative effort per mille") \
 OPTION( factorelim,        1,  0,  1,0,0,1, "immediately mark factored variables as elimination candidates (0=delay)") \

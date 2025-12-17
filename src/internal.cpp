@@ -484,7 +484,7 @@ void Internal::init_preprocessing_limits () {
   if (incremental)
     mode = "keeping";
   else {
-    double delta = log10 (stats.added.irredundant);
+    double delta = log10 (stats.added.irredundant + 10);
     delta = delta * delta;
     lim.inprobe = stats.conflicts + opts.inprobeint * delta;
     mode = "initial";
@@ -804,6 +804,10 @@ int Internal::preprocess (bool always) {
     res = lucky_phases ();
   if (res)
     return res;
+
+  if (opts.deduplicateallinit && !stats.deduplicatedinitrounds)
+    deduplicate_all_clauses();
+
   preprocess_quickly (always);
   for (int i = 0; i < lim.preprocessing; i++)
     if (!preprocess_round (i))

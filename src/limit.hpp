@@ -146,7 +146,9 @@ struct Inc {
       REFERENCE = opts.preprocessinit; \
     } \
     const double EFFORT = (double) opts.NAME##effort * 1e-3; \
-    const int64_t DELTA = EFFORT * REFERENCE; \
+    int64_t DELTA = EFFORT * REFERENCE; \
+    if (!DELTA) \
+      DELTA = 1; \
     const int64_t THRESH = opts.NAME##thresh * clauses.size (); \
     if (THRESHHOLD && DELTA < THRESH) { \
       VERBOSE (2, \

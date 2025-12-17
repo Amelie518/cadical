@@ -409,6 +409,16 @@ bool Internal::refactor_clause (Refactoring &refactoring,
 
   auto &ticks = refactoring.ticks;
   ticks++;
+  const int candidate_condition =
+      cand.negcon ? fate.condition : -fate.condition;
+  int not_candidate_branch =
+      cand.negdef ? fate.true_branch : fate.false_branch;
+  int candidate_branch =
+      !cand.negdef ? -fate.true_branch : -fate.false_branch;
+  if (cand.negcon) {
+    not_candidate_branch = -not_candidate_branch;
+    candidate_branch = -candidate_branch;
+  }
 
   // First check whether the candidate clause is already satisfied and at
   // the same time copy its non fixed literals to 'sorted'.  The literals
@@ -446,31 +456,11 @@ bool Internal::refactor_clause (Refactoring &refactoring,
   //
   if (level) {
     int bt_level = 0;
-    if (cand.negcon) {
-      if (control[0].decision == -fate.condition)
-        bt_level = 1;
-      if (cand.negdef) {
-        if (bt_level && level > 1 &&
-            control[1].decision == fate.true_branch)
-          bt_level = 2;
-      } else {
-        if (bt_level && level > 1 &&
-            control[1].decision == -fate.true_branch)
-          bt_level = 2;
-      }
-    } else {
-      if (control[0].decision == fate.condition)
-        bt_level = 1;
-      if (cand.negdef) {
-        if (bt_level && level > 1 &&
-            control[1].decision == fate.false_branch)
-          bt_level = 2;
-      } else {
-        if (bt_level && level > 1 &&
-            control[1].decision == -fate.false_branch)
-          bt_level = 2;
-      }
-    }
+    if (control[0].decision == candidate_condition)
+      bt_level = 1;
+    if (bt_level && level > 1 &&
+        control[1].decision == not_candidate_branch)
+      bt_level = 2;
 
     backtrack_without_updating_phases (bt_level);
 
@@ -494,9 +484,7 @@ bool Internal::refactor_clause (Refactoring &refactoring,
   //
 
   if (!level) {
-    int lit = fate.condition;
-    if (cand.negcon)
-      lit = -lit;
+    int lit = candidate_condition;
     const signed char tmp = val (lit);
     if (tmp) {
       LOG ("condition %d is root-level assigned", lit);
@@ -510,12 +498,8 @@ bool Internal::refactor_clause (Refactoring &refactoring,
       return false;
     }
   }
-  if (level != 1) {
-    int lit = -fate.false_branch;
-    if (cand.negdef)
-      lit = -fate.true_branch;
-    if (!cand.negcon)
-      lit = -lit;
+  if (level == 1) {
+    int lit = not_candidate_branch;
     const signed char tmp = val (lit);
     if (tmp) {
       LOG ("branch %d is implied by condition (or root-level)", lit);
@@ -593,7 +577,14 @@ bool Internal::refactor_clause (Refactoring &refactoring,
   refactor_analyze (reason, subsume);
 
   // TODO: learn temporary clauses and use gate clauses to shrink candidate
-  refactor_shrink_candidate (cand, fate);
+  if (clause.size () < 2) {
+    // TODO: cannot happen!
+    COVER (true);
+  } else if (clause[clause.size () - 1] != -candidate_condition ||
+             clause[clause.size () - 2] != -not_candidate_branch) {
+    // TODO: self subsuming resolution!
+  } else
+    refactor_shrink_candidate (cand, fate);
 
   if (conflict) {
     LOG ("forcing backtracking at least one level after conflict");

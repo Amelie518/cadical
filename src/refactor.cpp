@@ -410,11 +410,11 @@ bool Internal::refactor_clause (Refactoring &refactoring,
   auto &ticks = refactoring.ticks;
   ticks++;
   const int candidate_condition =
-      cand.negcon ? fate.condition : -fate.condition;
+      cand.negcon ? -fate.condition : fate.condition;
   int not_candidate_branch =
-      cand.negdef ? fate.true_branch : fate.false_branch;
+      cand.negdef ? -fate.true_branch : -fate.false_branch;
   int candidate_branch =
-      !cand.negdef ? -fate.true_branch : -fate.false_branch;
+      !cand.negdef ? fate.true_branch : fate.false_branch;
   if (cand.negcon) {
     not_candidate_branch = -not_candidate_branch;
     candidate_branch = -candidate_branch;

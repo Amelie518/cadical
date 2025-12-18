@@ -3581,6 +3581,9 @@ bool Trace::shrink_segments (Trace::Segments &segments, int expected) {
   for (size_t i = 0; i < n; i++)
     removed[i] = false;
   bool res = false;
+  Trace tmp2;
+  tmp2.clear ();
+  Trace *tmp_notify = this;
   for (;;) {
     for (size_t l = 0, r; l < n; l = r) {
       r = l + granularity;
@@ -3608,13 +3611,18 @@ bool Trace::shrink_segments (Trace::Segments &segments, int expected) {
       for (size_t i = 0; i < size (); i++)
         if (!ignore[i])
           tmp.push_back (calls[i]->copy ());
-      progress ();
+      progress (*tmp_notify);
       if (tmp.fork_and_execute () != expected) { // failed
         for (size_t i = l; i < r; i++)
           removed[i] = saved[i];
       } else {
         res = true; // succeeded to shrink
         mobical.notify (tmp);
+        tmp2.clear ();
+        for (size_t i = 0; i < tmp.size (); i++) {
+          tmp2.push_back (tmp.calls[i]->copy ());
+          tmp_notify = &tmp2;
+        }
       }
     }
     if (granularity == 1)
@@ -5381,6 +5389,8 @@ int Mobical::main (int argc, char **argv) {
 
     if (limit < 0)
       limit = LONG_MAX;
+    if (bug_limit < 0)
+      bug_limit = LONG_MAX;
 
     prefix ();
     cerr << left << setw (14) << "count";

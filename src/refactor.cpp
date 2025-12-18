@@ -227,8 +227,12 @@ void Internal::refactor_analyze (Clause *start, int subsume) {
     if (lrat && reason)
       lrat_chain.push_back (reason->id);
   }
-  if (lrat)
+  if (lrat) {
+    for (const auto &id : unit_chain)
+      lrat_chain.push_back (id);
     std::reverse (lrat_chain.begin (), lrat_chain.end ());
+    unit_chain.clear ();
+  }
 }
 
 void Internal::refactor_shrink_candidate (refactor_candidate cand,
@@ -329,6 +333,7 @@ void Internal::refactor_shrink_candidate (refactor_candidate cand,
     proof->delete_clause (tmp_id_2, true, tmp_clause_2);
     proof->delete_clause (tmp_id_3, true, tmp_clause_3);
   }
+  mark_garbage (cand.candidate);
 }
 
 /*------------------------------------------------------------------------*/
@@ -346,6 +351,9 @@ bool Internal::refactor_clause (Refactoring &refactoring,
   assert (c->size > 2); // see (NO-BINARY) below
   assert (analyzed.empty ());
 
+  // TODO: figure out why this can happen...
+  if (c->garbage)
+    return false;
   assert (!c->garbage);
 
   auto &ticks = refactoring.ticks;
@@ -592,13 +600,19 @@ void Internal::refactor_initialize (Refactoring &refactoring,
         continue;
       if (!c->redundant && c->size == 3) {
         bool gate = true;
+        int branch = 0;
         for (auto &lit : *c) {
           if (!marked2 (lit) && !marked2 (-lit)) {
             gate = false;
             break;
-          }
+          } else if (abs (lit) == abs (fg.true_branch))
+            branch++;
+          else if (abs (lit) == abs (fg.false_branch))
+            branch++;
         }
         if (!gate)
+          continue;
+        else if (branch != 1) // can only happen for ITE gates
           continue;
         // TODO: what if the phases do not match
         // or we have duplicated clauses...

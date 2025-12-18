@@ -2,3 +2,8 @@ build
 makefile
 .aider*
 *~
+/*.trace
+/*.cnf
+/*.lrat
+/*.drat
+.zed

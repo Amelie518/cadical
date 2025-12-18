@@ -102,20 +102,7 @@ inline void Internal::vivify_subsume_clause (Clause *subsuming,
     mark_garbage (subsumed);
     return;
   }
-  LOG ("turning redundant subsuming clause into irredundant clause");
-  subsuming->redundant = false;
-  if (proof)
-    proof->strengthen (subsuming->id);
-  mark_garbage (subsumed);
-  mark_added (subsuming);
-  stats.current.irredundant++;
-  stats.added.irredundant++;
-  stats.irrlits += subsuming->size;
-  assert (stats.current.redundant > 0);
-  stats.current.redundant--;
-  assert (stats.added.redundant > 0);
-  stats.added.redundant--;
-  // ... and keep 'stats.added.total'.
+  make_irredundant (subsuming);
 }
 
 // demoting a clause (opposite is promote from subsume.cpp)

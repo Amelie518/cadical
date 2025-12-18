@@ -242,6 +242,24 @@ size_t Internal::shrink_clause (Clause *c, int new_size) {
   return res;
 }
 
+// Makes a redundant clause irredundant and update the statistics
+void Internal::make_irredundant (Clause *subsuming) {
+  assert (subsuming->redundant);
+  assert (!subsuming->garbage);
+  LOG ("turning redundant subsuming clause into irredundant clause");
+  subsuming->redundant = false;
+  if (proof)
+    proof->strengthen (subsuming->id);
+  stats.current.irredundant++;
+  stats.added.irredundant++;
+  stats.irrlits += subsuming->size;
+  assert (stats.current.redundant > 0);
+  stats.current.redundant--;
+  assert (stats.added.redundant > 0);
+  stats.added.redundant--;
+  // ... and keep 'stats.added.total'.
+}
+
 // This is the 'raw' deallocation of a clause.  If the clause is in the
 // arena nothing happens.  If the clause is not in the arena its memory is
 // reclaimed immediately.

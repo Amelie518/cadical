@@ -134,19 +134,8 @@ inline void Internal::subsume_clause (Clause *subsuming, Clause *subsumed) {
     mark_garbage (subsumed);
     return;
   }
-  LOG ("turning redundant subsuming clause into irredundant clause");
-  subsuming->redundant = false;
-  if (proof)
-    proof->strengthen (subsuming->id);
   mark_garbage (subsumed);
-  stats.current.irredundant++;
-  stats.added.irredundant++;
-  stats.irrlits += subsuming->size;
-  assert (stats.current.redundant > 0);
-  stats.current.redundant--;
-  assert (stats.added.redundant > 0);
-  stats.added.redundant--;
-  // ... and keep 'stats.added.total'.
+  make_irredundant (subsuming);
 }
 
 /*------------------------------------------------------------------------*/

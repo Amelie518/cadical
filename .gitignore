@@ -10,5 +10,4 @@ makefile
 /traces
 *.plist
 *.pch
-
->>>>>>> 431149b6 (fixed clang --analyze warnings)
+.cache

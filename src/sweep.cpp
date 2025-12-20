@@ -218,7 +218,8 @@ void Internal::init_sweeper (Sweeper &sweeper) {
   enlarge_zero (sweeper.next, max_var + 1);
   for (const auto &lit : lits)
     sweeper.reprs[lit] = lit;
-  sweeper.first = sweeper.last = 0;
+  sweeper.first = sweeper.last = sweeper.save = 0;
+  sweeper.limit.ticks = 0;
   sweeper.current_ticks =
       2 *
       clauses

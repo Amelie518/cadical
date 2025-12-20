@@ -19,7 +19,6 @@ struct sweep_proof_clause {
 };
 
 struct sweep_blocked_clause {
-  int blit;
   int64_t id;
   std::vector<int> literals;
 };
@@ -40,13 +39,12 @@ struct Sweeper {
   std::vector<unsigned> depths;
   int *reprs;
   std::vector<int> next, prev;
-  int first, last, blit;
+  int first, last;
   unsigned encoded;
   unsigned save;
   std::vector<int> vars;
   std::vector<Clause *> clauses;
   std::vector<sweep_blocked_clause> blocked_clauses;
-  bool flush_blocked_clauses;
   std::vector<int> blockable;
   std::vector<int> clause;
   std::vector<int> propagate;

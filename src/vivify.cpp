@@ -288,8 +288,8 @@ bool Internal::vivify_propagate (int64_t &ticks) {
     } else
       break;
   }
-  int64_t delta = propagated2 - before;
-  stats.propagations.vivify += delta;
+  size_t delta = propagated2 - before;
+  stats.propagations.vivify += static_cast<int64_t>(delta);
   if (conflict)
     LOG (conflict, "conflict");
   STOP (propagate);
@@ -328,8 +328,8 @@ struct vivify_more_noccs_kissat {
   vivify_more_noccs_kissat (Internal *i) : internal (i) {}
 
   bool operator() (int a, int b) {
-    unsigned s = internal->noccs (a);
-    unsigned t = internal->noccs (b);
+    const unsigned s = internal->noccs (a);
+    const unsigned t = internal->noccs (b);
     return (((t - s) |
              ((internal->vlit (a) - internal->vlit (b)) & ~(s - t))) >>
             31);

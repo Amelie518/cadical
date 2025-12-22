@@ -1677,11 +1677,11 @@ void Internal::vivify_round (Vivifier &vivifier, int64_t ticks_limit) {
   stats.strengthened += strengthened;
   stats.ticks.vivify += vivifier.ticks;
 
-  bool unsuccessful = !(subsumed + strengthened + units);
+  const bool unsuccessful = !(subsumed + strengthened + units);
   report (vivifier.tag, unsuccessful);
 }
 
-void set_vivifier_mode (Vivifier &vivifier, Vivify_Mode tier) {
+static void set_vivifier_mode (Vivifier &vivifier, Vivify_Mode tier) {
   vivifier.tier = tier;
   switch (tier) {
   case Vivify_Mode::TIER1:

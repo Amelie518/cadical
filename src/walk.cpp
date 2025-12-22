@@ -471,7 +471,7 @@ bool Internal::walk_flip_lit (Walker &walker, int lit) {
 
   // First flip the literal value.
   //
-  const int tmp = sign (lit);
+  const signed char tmp = sign (lit);
   const int idx = abs (lit);
   set_val (idx, tmp);
   assert (val (lit) > 0);

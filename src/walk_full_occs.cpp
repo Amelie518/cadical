@@ -580,7 +580,7 @@ void WalkerFO::walk_full_occs_flip_lit (int lit) {
 
   // First flip the literal value.
   //
-  const int tmp = sign (lit);
+  const signed char tmp = sign (lit);
   const int idx = abs (lit);
   internal->set_val (idx, tmp);
   assert (internal->val (lit) > 0);

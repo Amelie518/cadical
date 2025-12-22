@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cstddef>
+#include <string>
 
 /*------------------------------------------------------------------------*/
 
@@ -350,7 +351,7 @@ class Options {
   static void initialize_from_environment (int &val, const char *name,
                                            const int L, const int H);
 
-  friend Config;
+  friend class Config;
 
   void reset_default_values ();
   void disable_preprocessing ();
@@ -422,7 +423,7 @@ public:
   // 'true' is returned and the string will be set to the name of the
   // option.  Additionally the parsed value is set (last argument).
   //
-  static bool parse_long_option (const char *, string &, int &);
+  static bool parse_long_option (const char *, std::string &, int &);
 
   // Iterating options.
 

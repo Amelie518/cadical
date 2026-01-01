@@ -1,3 +1,9 @@
+Version 3.0.X
+-------------
+
+- Fixed accidental deactivation of local search initially (off by default, activation with `-L`), due to a ticks limit of 0.
+
+
 Version 3.0.0
 -------------
 

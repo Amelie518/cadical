@@ -271,7 +271,7 @@ inline void Internal::backbone_unit_assign (int lit) {
   assert (!vals[idx]);
   Var &v = var (idx);
   v.level = 0;                   // required to reuse decisions
-  v.trail = (int) trail.size (); // used in 'vivify_better_watch'
+  v.trail = get_trail_size (); // used in 'vivify_better_watch'
   assert ((int) num_assigned < max_var);
   num_assigned++;
   v.reason = 0; // for conflict analysis
@@ -294,7 +294,7 @@ inline void Internal::backbone_assign_any (int lit, Clause *reason) {
   assert (reason == decision_reason || !reason || reason->size >= 2);
   Var &v = var (idx);
   v.level = level;               // required to reuse decisions
-  v.trail = (int) trail.size (); // used in 'vivify_better_watch'
+  v.trail = get_trail_size (); // used in 'vivify_better_watch'
   assert ((int) num_assigned < max_var);
   num_assigned++;
   v.reason = level ? reason : 0; // for conflict analysis
@@ -317,7 +317,7 @@ inline void Internal::backbone_assign (int lit, Clause *reason) {
   assert (reason == decision_reason || !reason || reason->size == 2);
   Var &v = var (idx);
   v.level = level;               // required to reuse decisions
-  v.trail = (int) trail.size (); // used in 'vivify_better_watch'
+  v.trail = get_trail_size (); // used in 'vivify_better_watch'
   assert ((int) num_assigned < max_var);
   num_assigned++;
   v.reason = level ? reason : 0; // for conflict analysis

@@ -463,6 +463,7 @@ struct Internal {
 
   bool occurring () const { return !otab.empty (); }
   bool watching () const { return !wtab.empty (); }
+  int get_trail_size () const {assert (trail.size () <= INT32_MAX); return static_cast<int>(trail.size ());}
 
   Bins &bins (int lit) { return big[vlit (lit)]; }
   Occs &occs (int lit) { return otab[vlit (lit)]; }

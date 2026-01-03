@@ -297,11 +297,11 @@ inline void Internal::probe_assign (int lit, int parent) {
   assert (!parent || val (parent) > 0);
   Var &v = var (idx);
   v.level = level;
-  v.trail = (int) trail.size ();
+  v.trail = get_trail_size ();
   assert ((int) num_assigned < max_var);
   num_assigned++;
   v.reason = level ? probe_reason : 0;
-  probe_reason = 0;
+  probe_reason = nullptr;
   set_parent_reason_literal (lit, parent);
   if (!level)
     learn_unit_clause (lit);
@@ -334,7 +334,7 @@ void Internal::probe_assign_decision (int lit) {
   assert (!level);
   assert (propagated == trail.size ());
   level++;
-  control.push_back (Level (lit, trail.size ()));
+  control.push_back (Level (lit, get_trail_size ()));
   probe_assign (lit, 0);
 }
 
@@ -413,7 +413,7 @@ bool Internal::probe_propagate () {
   require_mode (PROBE);
   assert (!unsat);
   START (propagate);
-  int64_t before = propagated2 = propagated;
+  const size_t before = propagated2 = propagated;
   int64_t &ticks = stats.ticks.probe;
   while (!conflict) {
     if (propagated2 != trail.size ())
@@ -498,7 +498,7 @@ bool Internal::probe_propagate () {
     } else
       break;
   }
-  int64_t delta = propagated2 - before;
+  int64_t delta = (int64_t)propagated2 - before;
   stats.propagations.probe += delta;
   if (conflict)
     LOG (conflict, "conflict");

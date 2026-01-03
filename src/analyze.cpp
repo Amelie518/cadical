@@ -676,7 +676,7 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
     int best_idx = 0, best_pos = 0;
 
     if (use_scores ()) {
-      for (int i = control[jump + 1].trail; i < (int)trail.size (); i++) {
+      for (int i = control[jump + 1].trail; i <  get_trail_size (); i++) {
         const int idx = abs (trail[i]);
         if (best_idx && !score_smaller (this) (best_idx, idx))
           continue;
@@ -685,7 +685,7 @@ inline int Internal::determine_actual_backtrack_level (int jump) {
       }
       LOG ("best variable score %g", score (best_idx));
     } else {
-      for (int i = control[jump + 1].trail; i < (int)trail.size (); i++) {
+      for (int i = control[jump + 1].trail; i <  get_trail_size (); i++) {
         const int idx = abs (trail[i]);
         if (best_idx && bumped (best_idx) >= bumped (idx))
           continue;

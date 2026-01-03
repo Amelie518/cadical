@@ -33,7 +33,7 @@ inline void Internal::warmup_assign (int lit, Clause *reason) {
   lit_level = level;
 
   v.level = lit_level;
-  v.trail = trail.size ();
+  v.trail = get_trail_size ();
   v.reason = reason;
   assert ((int) num_assigned < max_var);
   assert (num_assigned == trail.size ());

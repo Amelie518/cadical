@@ -157,7 +157,7 @@ inline void Internal::vivify_assign (int lit, Clause *reason) {
   assert (!flags (idx).eliminated () || !reason);
   Var &v = var (idx);
   v.level = level;               // required to reuse decisions
-  v.trail = (int) trail.size (); // used in 'vivify_better_watch'
+  v.trail = get_trail_size (); // used in 'vivify_better_watch'
   assert ((int) num_assigned < max_var);
   num_assigned++;
   v.reason = level ? reason : nullptr; // for conflict analysis
@@ -177,8 +177,7 @@ inline void Internal::vivify_assign (int lit, Clause *reason) {
 void Internal::vivify_assume (int lit) {
   require_mode (VIVIFY);
   level++;
-  assert (trail.size () < std::numeric_limits<int>::max ());
-  control.emplace_back (lit, static_cast<int>(trail.size ()));
+  control.emplace_back (lit, get_trail_size ());
   LOG ("vivify decide %d", lit);
   assert (level > 0);
   assert (propagated == trail.size ());
@@ -577,7 +576,7 @@ void Internal::vivify_analyze (Clause *start, bool &subsumes,
                                const Clause *const candidate, int implied,
                                bool &redundant) {
   const auto &t = &trail; // normal trail, so next_trail is wrong
-  size_t i = t->size ();     // Start at end-of-trail.
+  int i = get_trail_size ();     // Start at end-of-trail.
   Clause *reason = start;
   assert (reason);
   assert (!trail.empty ());

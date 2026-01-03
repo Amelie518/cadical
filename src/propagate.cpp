@@ -135,7 +135,7 @@ inline void Internal::search_assign (int lit, Clause *reason) {
     reason = 0;
 
   v.level = lit_level;
-  v.trail = trail.size ();
+  v.trail = get_trail_size ();
   v.reason = reason;
   assert ((int) num_assigned < max_var);
   assert (num_assigned == trail.size ());

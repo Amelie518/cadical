@@ -369,7 +369,7 @@ void Internal::assign_original_unit (int64_t id, int lit) {
   assert (!flags (idx).eliminated ());
   Var &v = var (idx);
   v.level = 0;
-  v.trail = (int) trail.size ();
+  v.trail = get_trail_size ();
   v.reason = 0;
   const signed char tmp = sign (lit);
   set_val (idx, tmp);

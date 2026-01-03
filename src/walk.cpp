@@ -36,7 +36,7 @@ struct Walker {
   std::vector<int>
       flips; // remember the flips compared to the last best saved model
   int best_trail_pos;
-  int64_t minimum = INT64_MAX;
+  size_t minimum = INT64_MAX;
   std::vector<signed char> best_values; // best model stored so far
   double score (unsigned);              // compute score from break count
 #ifndef NDEBUG
@@ -46,7 +46,7 @@ struct Walker {
   void populate_table (double size);
   void push_flipped (int flipped);
   void save_walker_trail (bool);
-  void save_final_minimum (int64_t old_minimum);
+  void save_final_minimum (size_t old_minimum);
 };
 
 // These are in essence the CB values from Adrian Balint's thesis.  They
@@ -207,7 +207,7 @@ void Walker::save_walker_trail (bool keep) {
 }
 
 // finally export the final minimum
-void Walker::save_final_minimum (int64_t old_init_minimum) {
+void Walker::save_final_minimum (size_t old_init_minimum) {
   assert (minimum <= old_init_minimum);
 #ifdef NDEBUG
   (void) old_init_minimum;
@@ -228,6 +228,7 @@ void Walker::save_final_minimum (int64_t old_init_minimum) {
   internal->copy_phases (internal->phases.best);
   internal->copy_phases (internal->phases.prev);
 }
+
 // The scores are tabulated for faster computation (to avoid 'pow').
 
 inline double Walker::score (unsigned i) {
@@ -241,10 +242,10 @@ inline double Walker::score (unsigned i) {
 ClauseOrBinary Internal::walk_pick_clause (Walker &walker) {
   require_mode (WALK);
   assert (!walker.broken.empty ());
-  int64_t size = walker.broken.size ();
+  size_t size = walker.broken.size ();
   if (size > INT_MAX)
     size = INT_MAX;
-  int pos = walker.random.pick_int (0, size - 1);
+  int pos = walker.random.pick_int (0, (int)size - 1);
   ClauseOrBinary res = walker.broken[pos];
 #ifdef LOGGING
   Clause *c;
@@ -696,7 +697,7 @@ bool Internal::walk_flip_lit (Walker &walker, int lit) {
 // Check whether to save the current phases as new global minimum.
 
 inline void Internal::walk_save_minimum (Walker &walker) {
-  int64_t broken = walker.broken.size ();
+  size_t broken = walker.broken.size ();
   if (broken >= walker.minimum)
     return;
   if (broken <= stats.walk.minimum) {
@@ -781,7 +782,7 @@ int Internal::walk_round (int64_t limit, bool prev) {
   //
   Walker walker (internal, limit);
 #ifndef QUIET
-  int old_global_minimum = stats.walk.minimum;
+  size_t old_global_minimum = stats.walk.minimum;
 #endif
 
   bool failed = false; // Inconsistent assumptions?
@@ -844,7 +845,7 @@ int Internal::walk_round (int64_t limit, bool prev) {
 
     LOG ("watching satisfied and registering broken clauses");
 #ifdef LOGGING
-    int64_t watched = 0;
+    size_t watched = 0;
 #endif
 
     double size = 0;
@@ -921,10 +922,10 @@ int Internal::walk_round (int64_t limit, bool prev) {
 
 #ifdef LOGGING
     if (!failed) {
-      int64_t broken = walker.broken.size ();
-      int64_t total = watched + broken;
-      LOG ("watching %" PRId64 " clauses %.0f%% "
-           "out of %" PRId64 " (watched and broken)",
+      size_t broken = walker.broken.size ();
+      size_t total = watched + broken;
+      LOG ("watching %zd clauses %.0f%% "
+           "out of %zd (watched and broken)",
            watched, percent (watched, total), total);
     }
 #endif
@@ -936,8 +937,8 @@ int Internal::walk_round (int64_t limit, bool prev) {
 
   if (!failed) {
 
-    int64_t broken = walker.broken.size ();
-    int64_t initial_minimum = broken;
+    size_t broken = walker.broken.size ();
+    size_t initial_minimum = broken;
 
     PHASE ("walk", stats.walk.count,
            "starting with %" PRId64 " unsatisfied clauses "
@@ -948,7 +949,7 @@ int Internal::walk_round (int64_t limit, bool prev) {
     walk_save_minimum (walker);
     assert (stats.walk.minimum <= walker.minimum);
 
-    int64_t minimum = broken;
+    size_t minimum = broken;
 #ifndef QUIET
     int64_t flips = 0;
 #endif
@@ -958,7 +959,7 @@ int Internal::walk_round (int64_t limit, bool prev) {
       flips++;
 #endif
       stats.walk.flips++;
-      stats.walk.broken += broken;
+      stats.walk.broken += (int64_t)broken;
       ClauseOrBinary c = walk_pick_clause (walker);
       const int lit = walk_pick_lit (walker, c);
       bool finished = walk_flip_lit (walker, lit);

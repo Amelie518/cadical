@@ -1,4 +1,5 @@
 #include "internal.hpp"
+#include <cstddef>
 #include <cstdint>
 
 namespace CaDiCaL {
@@ -49,7 +50,7 @@ struct WalkerFO {
   std::vector<int>
       flips; // remember the flips compared to the last best saved model
   int best_trail_pos;
-  int64_t minimum = INT64_MAX;
+  size_t minimum = INT64_MAX;
   std::vector<signed char> best_values; // best model found so far
   double score (unsigned);              // compute score from break count
 
@@ -129,7 +130,7 @@ struct WalkerFO {
   WalkerFO (Internal *, double size, int64_t limit);
   void push_flipped (int flipped);
   void save_walker_trail (bool);
-  void save_final_minimum (int64_t old_minimum);
+  void save_final_minimum (size_t old_minimum);
   void make_clauses_along_occurrences (int lit);
   void make_clauses_along_unsatisfied (int lit);
   void make_clauses (int lit);
@@ -293,7 +294,7 @@ void WalkerFO::save_walker_trail (bool keep) {
 }
 
 // finally export the final minimum
-void WalkerFO::save_final_minimum (int64_t old_init_minimum) {
+void WalkerFO::save_final_minimum (size_t old_init_minimum) {
   assert (minimum <= old_init_minimum);
 #ifdef NDEBUG
   (void) old_init_minimum;
@@ -544,7 +545,7 @@ void WalkerFO::break_clauses (int lit) {
   // Finally add all new unsatisfied (broken) clauses.
 
 #ifdef LOGGING
-  int64_t broken = 0;
+  size_t broken = 0;
 #endif
   const WalkerFO::TOccs &ws = occs (lit);
   ticks += (1 + internal->cache_lines (ws.size (), sizeof (Clause *)));
@@ -598,7 +599,7 @@ void WalkerFO::walk_full_occs_flip_lit (int lit) {
 // Check whether to save the current phases as new global minimum.
 
 inline void Internal::walk_full_occs_save_minimum (WalkerFO &walker) {
-  int64_t broken = walker.broken.size ();
+  size_t broken = walker.broken.size ();
   if (broken >= walker.minimum)
     return;
   if (broken <= stats.walk.minimum) {
@@ -805,10 +806,10 @@ int Internal::walk_full_occs_round (int64_t limit, bool prev) {
     }
 #ifdef LOGGING
     if (!failed) {
-      int64_t broken = walker.broken.size ();
-      int64_t total = watched + broken;
-      MSG ("watching %" PRId64 " clauses %.0f%% "
-           "out of %" PRId64 " (watched and broken)",
+      size_t broken = walker.broken.size ();
+      size_t total = watched + broken;
+      MSG ("watching %zd clauses %.0f%% "
+           "out of %zd (watched and broken)",
            watched, percent (watched, total), total);
     }
 #endif
@@ -818,11 +819,11 @@ int Internal::walk_full_occs_round (int64_t limit, bool prev) {
 
   if (!failed) {
 
-    int64_t broken = walker.broken.size ();
-    int64_t initial_minimum = broken;
+    size_t broken = walker.broken.size ();
+    size_t initial_minimum = broken;
 
     PHASE ("walk", stats.walk.count,
-           "starting with %" PRId64 " unsatisfied clauses "
+           "starting with %zd unsatisfied clauses "
            "(%.0f%% out of %" PRId64 ")",
            broken, percent (broken, stats.current.irredundant),
            stats.current.irredundant);
@@ -830,7 +831,7 @@ int Internal::walk_full_occs_round (int64_t limit, bool prev) {
     walk_full_occs_save_minimum (walker);
     assert (stats.walk.minimum <= walker.minimum);
 
-    int64_t minimum = broken;
+    size_t minimum = broken;
 #ifndef QUIET
     int64_t flips = 0;
 #endif

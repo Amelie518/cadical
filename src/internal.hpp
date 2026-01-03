@@ -412,7 +412,8 @@ struct Internal {
 
   int u2i (unsigned u) {
     assert (u > 1);
-    int res = u / 2;
+    assert (u <= INT32_MAX);
+    int res = (int)u / 2;
     assert (res <= max_var);
     if (u & 1)
       res = -res;
@@ -420,7 +421,8 @@ struct Internal {
   }
 
   int citten2lit (unsigned ulit) {
-    int res = (ulit / 2) + 1;
+    assert (ulit <= INT32_MAX);
+    int res = (int)(ulit / 2) + 1;
     assert (res <= max_var);
     if (ulit & 1)
       res = -res;

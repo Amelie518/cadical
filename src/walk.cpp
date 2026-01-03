@@ -270,7 +270,7 @@ unsigned Internal::walk_break_value (int lit, int64_t &ticks) {
   const int64_t oldticks = ticks;
 
   unsigned res = 0; // The computed break-count of 'lit'.
-  ticks += (1 + cache_lines (watches (lit).size (), sizeof (Clause *)));
+  ticks += (1 + cache_lines (watches (lit).size (), sizeof (Watch)));
 
   for (auto &w : watches (lit)) {
     assert (w.blit != lit);
@@ -491,12 +491,12 @@ bool Internal::walk_flip_lit (Walker &walker, int lit) {
     LOG ("trying to make %zd broken clauses", walker.broken.size ());
 
     const auto eou = walker.broken.end ();
+    auto j = walker.broken.begin (), i = j;
     // broken is in cache given how central it is... but not always (see the
     // ncc problems). Value was heuristically determined to give reasonnable
     // values.
     walker.ticks +=
-        1 + cache_lines (walker.broken.size (), sizeof (Clause *));
-    auto j = walker.broken.begin (), i = j;
+        1 + cache_lines (walker.broken.size (), sizeof (*i));
 #if defined(LOGGING) || !defined(NDEBUG)
     int64_t made = 0;
 #endif
@@ -609,7 +609,7 @@ bool Internal::walk_flip_lit (Walker &walker, int lit) {
 #endif
     Watches &ws = watches (-lit);
     // probably still in cache
-    walker.ticks += 1 + cache_lines (ws.size (), sizeof (Clause *));
+    walker.ticks += 1 + cache_lines (ws.size (), sizeof (Watch));
 
     LOG ("trying to break %zd watched clauses", ws.size ());
 

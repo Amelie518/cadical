@@ -111,10 +111,10 @@ void Stats::print (Internal *internal) {
          percent (stats.backbone.units, stats.backbone.phases));
   }
   if (all || stats.deduplicatedinit) {
-    PRT ("dedup-init-rnds:  %15" PRId64 "   %10.2f %%  of interval",
+    PRT ("dedup-init-rnds: %15" PRId64 "   %10.2f %%  of interval",
          stats.deduplicatedinitrounds,
          percent (stats.deduplicatedinitrounds, stats.conflicts));
-    PRT ("dedup-init:       %15" PRId64 "   %10.2f %%  of subsumed",
+    PRT ("dedup-init:      %15" PRId64 "   %10.2f %%  of subsumed",
          stats.deduplicatedinit,
          percent (stats.deduplicatedinit, stats.deduplicatedinit));
   }

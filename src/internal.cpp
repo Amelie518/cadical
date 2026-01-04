@@ -20,12 +20,12 @@ Internal::Internal ()
       level (0), vals (0), score_inc (1.0), scores (this), conflict (0),
       ignore (0), external_reason (&external_reason_clause),
       newest_clause (0), force_no_backtrack (false),
-      from_propagator (false), ext_clause_forgettable (false),
+      from_propagator (false), ext_clause_forgettable (false), unsat_constraint (false),
+      marked_failed (true), sweep_incomplete (false),
       changed_val (0), notified (0), probe_reason (0), propagated (0),
       propagated2 (0), propergated (0), best_assigned (0),
-      target_assigned (0), no_conflict_until (0), unsat_constraint (false),
-      marked_failed (true), sweep_incomplete (false),
-      randomized_deciding (false), citten (0), num_assigned (0), proof (0),
+      target_assigned (0), no_conflict_until (0),
+      randomized_deciding (false), citten (nullptr), num_assigned (0), proof (0),
       opts (this),
 #ifndef QUIET
       profiles (this), force_phase_messages (false),
@@ -33,7 +33,7 @@ Internal::Internal ()
       arena (this), prefix ("c "), internal (this), external (0),
       termination_forced (false), vars (this->max_var),
       lits (this->max_var) {
-  control.push_back (Level (0, 0));
+  control.emplace_back (0, 0);
 
   // The 'dummy_binary' is used in 'try_to_subsume_clause' to fake a real
   // clause (which then can be used to subsume or strengthen the given

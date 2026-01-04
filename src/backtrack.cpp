@@ -96,6 +96,7 @@ void Internal::backtrack (int new_level) {
 // you did out-of-order.
 //
 // Use `backtrack` to also save the phases. This one is mostly for inprocessing.
+
 void Internal::backtrack_without_updating_phases (int new_level) {
 
   assert (new_level <= level);

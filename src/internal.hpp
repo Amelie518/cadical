@@ -246,6 +246,9 @@ struct Internal {
   bool force_no_backtrack;      // for new clauses with external propagator
   bool from_propagator;         // differentiate new clauses...
   bool ext_clause_forgettable;  // Is new clause from propagator forgettable
+  bool unsat_constraint;     // constraint used for unsatisfiability?
+  bool marked_failed;        // are the failed assumptions marked?
+  bool sweep_incomplete;      // sweep
   int changed_val;              // used for ILB
   size_t notified;           // next trail position to notify external prop
   Clause *probe_reason;      // set during probing
@@ -259,8 +262,6 @@ struct Internal {
   vector<int> clause;        // simplified in parsing & learning
   vector<int> assumptions;   // assumed literals
   vector<int> constraint;    // literals of the constraint
-  bool unsat_constraint;     // constraint used for unsatisfiability?
-  bool marked_failed;        // are the failed assumptions marked?
   vector<int> original;      // original added literals
   vector<int> levels;        // decision levels in learned clause
   vector<int> analyzed;      // analyzed literals in 'analyze'
@@ -271,7 +272,6 @@ struct Internal {
   Reap reap;                 // radix heap for shrink
 
   vector<int> sweep_schedule; // remember sweep varibles to reschedule
-  bool sweep_incomplete;      // sweep
   uint64_t randomized_deciding;
 
   kitten *citten;

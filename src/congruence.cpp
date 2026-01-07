@@ -2589,7 +2589,9 @@ void Closure::update_and_gate_build_lrat_chain (
     // one direction: the binary clause already exists
     produce_rewritten_clause_lrat_and_clean (tauto->pos_lhs_ids(),
                                              other->lhs);
-    for (auto &litId : tauto->pos_lhs_ids()) {
+    produce_rewritten_clause_lrat_and_clean (tauto->neg_lhs_ids(),
+                                             other->lhs);
+    for (auto &litId : {tauto->neg_lhs_ids().content}) {
       LOG (litId.clause, "pushing clause from tauto");
       push_id_on_chain (extra_reasons_tauto, litId.clause);
     }
@@ -4958,9 +4960,8 @@ bool Closure::propagate_unit (int lit) {
 }
 
 bool Closure::propagate_units () {
-  while (units !=
-         internal->trail
-             .size ()) { // units are added during propagation, so reloading
+  // units are added during propagation, so reloading instead of storing the size
+  while (units != internal->trail.size ()) {
     LOG ("propagating %d over gates", internal->trail[units]);
     if (!propagate_unit (internal->trail[units++]))
       return false;
@@ -5557,7 +5558,20 @@ bool Closure::rewrite_ite_gate_to_and (
   assert (g->pos_lhs_ids().size () == 1);
 
   (void) maybe_promote_tmp_binary_clause (g->pos_lhs_ids()[0].clause);
-  g->pos_lhs_ids().push_back ({lit, e});
+  g->pos_lhs_ids ().push_back ({lit, e});
+
+  if (internal->val (g->lhs) > 0) {
+    LOG ("unit propagations after converting the ITE gate to AND");
+    for (auto reason : g->pos_lhs_ids ()) {
+      push_lrat_unit (g->lhs);
+      push_id_and_rewriting_lrat_unit (reason.clause, Rewrite (),
+                                       lrat_chain);
+      learn_congruence_unit(reason.current_lit, true);
+    }
+    g->garbage = true;
+  }
+  if (internal->val (g->lhs) < 0)
+    g->degenerated_gate = Special_Gate::DEGENERATED_AND_LHS_FALSE;
 #ifndef NDEBUG
   for (auto litId : g->pos_lhs_ids()) {
     bool found = false;
@@ -6484,7 +6498,9 @@ bool Closure::simplify_ite_gate_to_and (Gate *g, size_t idx1, size_t idx2,
     size_t new_idx2 = idx2;
     produce_rewritten_clause_lrat_and_clean (g->pos_lhs_ids(), 0, new_idx1,
                                              new_idx2, true);
-    assert (g->pos_lhs_ids().size () == 1);
+    assert (g->pos_lhs_ids ().size () == 1);
+    // the literal is not necessarily the same, so updating it
+    g->pos_lhs_ids()[0].current_lit = g->pos_lhs_ids()[0].clause->literals[0];
     assert (g->pos_lhs_ids()[0].clause->size == 2);
     return false;
   }

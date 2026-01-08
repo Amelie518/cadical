@@ -1351,7 +1351,7 @@ void Closure::learn_congruence_unit_falsifies_lrat_chain (
   if (!internal->lrat)
     return;
   assert (unit);
-  assert (!g->pos_lhs_ids().empty ());
+  assert (!g->pos_lhs_ids().empty () || g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE);
   assert (internal->analyzed.empty ());
   assert (lrat_chain.empty ());
   std::vector<LRAT_ID> proof_chain;
@@ -4767,7 +4767,7 @@ void Closure::rewrite_and_gate (Gate *g, int dst, int src, LRAT_ID id1,
       ++i;
     }
     LOG ("resizing to %zd", i);
-    assert (i || (g->arity () == 1 && g->rhs[0] == g->lhs));
+    assert (i || (g->arity () == 1 && g->rhs[0] == g->lhs) || g->pos_lhs_ids().empty ());
     g->pos_lhs_ids().resize (i);
   }
 
@@ -4777,8 +4777,9 @@ void Closure::rewrite_and_gate (Gate *g, int dst, int src, LRAT_ID id1,
   std::vector<LRAT_ID> reasons_lrat_src, reasons_lrat_usrc;
   shrink_and_gate (g, falsifies, clashing);
   LOG (g, "rewritten as");
-  assert (!internal->lrat || !g->pos_lhs_ids().empty () ||
-          (g->arity () == 1 && g->rhs[0] == g->lhs));
+  assert (!internal->lrat || !g->pos_lhs_ids ().empty () ||
+          (g->arity () == 1 && g->rhs[0] == g->lhs) ||
+	  (g->pos_lhs_ids().empty () && g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE));
   //  check_and_gate_implied (g);
   update_and_gate (g, git, src, dst, id1, id2, falsifies, clashing);
   ++internal->stats.congruence.rewritten_ands;

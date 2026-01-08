@@ -2457,14 +2457,18 @@ void Closure::update_and_gate_build_lrat_chain (
       (h_tautology && internal->val (g->lhs) < 0 &&
        g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE);
 
+  // example:
+  // other: -2(=-1) := 1 & 4 with the only clause -2 1 4
+  // tauto: 1 := 1&4 with the clauses -1 4
   if (produce_unit_due_to_both_degenerated) {
+    remove_units = true;
     LOG ("one gate is a tautology and the other is a unit: producing "
          "reason for unit");
     Gate *tauto = (g_tautology ? g : h);
     Gate *other = (g_tautology ? h : g);
     assert (tauto->degenerated_gate & Special_Gate::DEGENERATED_AND);
     LOG (tauto, "starting lrat from tauto gate");
-    for (auto &litId : tauto->pos_lhs_ids()) {
+    for (auto &litId : tauto->pos_lhs_ids ()) {
       litId.clause = produce_rewritten_clause_lrat (
           litId.clause, tauto->lhs, remove_units);
       if (litId.clause)
@@ -2473,19 +2477,9 @@ void Closure::update_and_gate_build_lrat_chain (
     LOG (tauto, "now creating lrat with other gate");
     // if tauto can also be a tautology: neg_lhs_ids
     // otherwise the clause is in pos_lhs_ids
-    for (auto &litId : other->pos_lhs_ids()) {
-      assert (extra_reasons_ulit.empty ());
-      assert (litId.clause);
-      LOG (litId.clause, "binary clause to push into the reason");
-      litId.clause =
-          produce_rewritten_clause_lrat (litId.clause, 0, remove_units);
-      if (litId.clause)
-        extra_reasons_lit.push_back (litId.clause->id);
-    }
-    if (other->neg_lhs_ids () ()) {
-      auto &litId = other->neg_lhs_ids ().content;
-      if (litId.current_lit == tauto->lhs ||
-          litId.current_lit == -tauto->lhs || true) {
+    if (!other->neg_lhs_ids () ()) {
+      // happens also if the tauto also has a negative lhs
+      for (auto &litId : other->pos_lhs_ids ()) {
         assert (extra_reasons_ulit.empty ());
         assert (litId.clause);
         LOG (litId.clause, "binary clause to push into the reason");
@@ -2493,6 +2487,21 @@ void Closure::update_and_gate_build_lrat_chain (
             produce_rewritten_clause_lrat (litId.clause, 0, remove_units);
         if (litId.clause)
           extra_reasons_lit.push_back (litId.clause->id);
+      }
+    } else {
+      if (other->neg_lhs_ids () ()) {
+        auto &litId = other->neg_lhs_ids ().content;
+        LOG (litId.clause,
+             "binary clause to push into the reason for literal %s",
+             LOGLIT (litId.current_lit));
+        if (litId.current_lit == tauto->lhs || true) {
+          assert (extra_reasons_ulit.empty ());
+          assert (litId.clause);
+          litId.clause =
+              produce_rewritten_clause_lrat (litId.clause, 0, remove_units);
+          if (litId.clause)
+            extra_reasons_lit.push_back (litId.clause->id);
+        }
       }
     }
     return;

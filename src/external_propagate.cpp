@@ -32,9 +32,9 @@ void Internal::add_observed_var (int ilit) {
     REQUIRE (!conflict,
              "can not observe assigned variable during conflict analysis");
     const int assignment_level = var (ilit).level;
-    backtrack (assignment_level - 1);
+    backtrack_without_updating_phases (assignment_level - 1);
   } else if (level && fixed (ilit)) {
-    backtrack (0);
+    backtrack_without_updating_phases (0);
   }
   activating_all_new_imported_literals ();
 }
@@ -52,7 +52,7 @@ void Internal::remove_observed_var (int ilit) {
         !conflict,
         "can not unobserve assigned variable during conflict analysis");
     const int assignment_level = var (ilit).level;
-    backtrack (assignment_level - 1);
+    backtrack_without_updating_phases (assignment_level - 1);
   }
 
   assert (fixed (ilit) || !val (ilit));

@@ -35,7 +35,7 @@ int External::declare_var (int new_var, bool extension) {
   assert ((size_t)new_var < e2i.size());
   if (!e2i[new_var]) {
     int ilit;
-    if (!internal->opts.varindexorder)
+    if (!internal->opts.vartumble)
       ilit = internal->max_var+1;
     else {
       ilit = new_var;

@@ -1313,12 +1313,16 @@ void Internal::declare_variable (int ilit) {
   imports.push_back (ilit);
 }
 
+// Now we come to the part where we import literals. We either import
+// them in order of appearance, in order of numbering, or the reversed
+// versions of that. The sorting is based on the external ordering not
+// the internal ordering.
 void Internal::activating_all_new_imported_literals () {
   LOG (imports, "declaring all new variables");
   if (imports.empty ())
     return;
   if (opts.varindexorder)
-    std::sort (begin (imports), end (imports), [&] (int l, int o) {return vidx (l) < vidx (o);});
+    std::sort (begin (imports), end (imports), [&] (int l, int o) {return i2e[vidx(l)] < i2e[vidx (o)];});
   if (!opts.varprioritizefirst)
     std::reverse (begin (imports), end (imports));
   auto max_it = std::max_element(imports.begin(), imports.end(),
@@ -1330,8 +1334,11 @@ void Internal::activating_all_new_imported_literals () {
   for (auto lit : imports) {
     int idx = vidx (lit);
     auto &f = flags (idx);
-    if (f.unused ()) // the user asked for it but did not put the literal in any clause
+    // the user asked for it but did not put the literal in any
+    // clause, we still should declare it (for future use by the user)
+    if (f.unused ())
       mark_declared (idx);
+    // for units, don't enqueue
     if (!f.declared ()) {
       assert (f.fixed ());
       continue;
@@ -1340,8 +1347,10 @@ void Internal::activating_all_new_imported_literals () {
     init_enqueue (idx);
     // due to propagation and backtracking, the literal might have already been
     // added
-    if (!scores.contains (idx))
+    if (!scores.contains (idx)) {
+      LOG ("pushing %s to the scores", LOGLIT (idx));
       scores.push_back (idx);
+    }
     assert (scores.contains(idx));
     assert (f.active ());
   }
@@ -1357,6 +1366,13 @@ void Internal::activating_all_new_imported_literals () {
       assert (flags (lit).active() || flags (lit).fixed() || flags (lit).eliminated());
     }
   }
+  for (auto v : vars) {
+    assert (flags (v).unused () || internal->val (v) ||
+            scores.contains (v));
+    if (flags (v).unused ())
+      assert (!scores.contains (v));
+  }
+  check_queue ();
 #endif
 }
 } // namespace CaDiCaL

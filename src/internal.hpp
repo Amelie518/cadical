@@ -348,6 +348,7 @@ struct Internal {
 
   void init_enqueue (int idx);
   void init_queue (int old_max_var, int new_max_var);
+  void check_queue ();
 
   void init_scores (int old_max_var, int new_max_var);
 

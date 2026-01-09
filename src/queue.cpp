@@ -7,6 +7,7 @@ namespace CaDiCaL {
 
 void Internal::init_enqueue (int idx) {
   Link &l = links[idx];
+  assert (flags (idx).active ());
   if (!opts.varprioritizefirst) {
     LOG ("enqueueing %s at the beginning", LOGLIT(idx));
     l.prev = 0;
@@ -22,6 +23,7 @@ void Internal::init_enqueue (int idx) {
     assert (btab[idx] <= stats.bumped);
     l.next = queue.first;
     queue.first = idx;
+    LOG ("enqueueing %s at the beginning, next: %d, last: %d", LOGLIT(idx), l.next, queue.last);
     //due to interactions with IPASIR-UP, we need to update it every time.
     //if (!queue.unassigned)
     update_queue_unassigned (queue.last);
@@ -70,11 +72,13 @@ void Internal::shuffle_queue () {
   vector<int> shuffle;
   if (opts.shufflerandom) {
     for (int idx = max_var; idx; idx--)
-      shuffle.push_back (idx);
+      if (!flags (idx).unused ())
+	shuffle.push_back (idx);
     Random random (opts.seed); // global seed
     random += stats.shuffled;  // different every time
-    for (int i = 0; i <= max_var - 2; i++) {
-      const int j = random.pick_int (i, max_var - 1);
+    const int highest_var = shuffle.size ();
+    for (int i = 0; i <= highest_var - 2; i++) {
+      const int j = random.pick_int (i, highest_var - 1);
       swap (shuffle[i], shuffle[j]);
     }
   } else {
@@ -88,6 +92,18 @@ void Internal::shuffle_queue () {
   for (int idx = queue.last; idx; idx = links[idx].prev)
     btab[idx] = bumped--;
   queue.unassigned = queue.last;
+}
+
+
+void Internal::check_queue () {
+  int res = queue.first;
+  while (res) {
+    assert (!flags (res).declared () && !flags (res).unused ());
+    int next = links[res].next;
+    if (!next) break;
+    assert (links[next].prev == res);
+    res = next;
+  }
 }
 
 } // namespace CaDiCaL

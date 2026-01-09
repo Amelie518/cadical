@@ -328,7 +328,7 @@ int Internal::decide () {
 #endif
 
   } else {
-
+    check_queue ();
     int decision = ask_decision ();
     if ((size_t) level < assumptions.size () ||
         ((size_t) level == assumptions.size () && constraint.size ())) {

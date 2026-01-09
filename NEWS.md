@@ -3,6 +3,10 @@ Version 3.0.X
 
 - Fixed accidental deactivation of local search initially (off by default, activation with `-L`), due to a ticks limit of 0.
 
+- Major rework of literal import. The option `reverse` was renamed `varprioritizefirst`.
+
+- For models, CaDiCaL now outputs only the literals that are present
+  in the problem. Use `modelalllits` to get all literals.
 
 Version 3.0.0
 -------------

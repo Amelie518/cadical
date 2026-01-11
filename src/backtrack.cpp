@@ -15,6 +15,9 @@ inline void Internal::unassign (int lit) {
   LOG ("unassign %d @ %d", lit, var (idx).level);
   num_assigned--;
 
+  if (flags (idx).declared ())
+    return;
+
   // In the standard EVSIDS variable decision heuristic of MiniSAT, we need
   // to push variables which become unassigned back to the heap.
   //

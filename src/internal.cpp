@@ -1338,13 +1338,16 @@ void Internal::activating_all_new_imported_literals () {
     // clause, we still should declare it (for future use by the user)
     if (f.unused ())
       mark_declared (idx);
-    // for units, don't enqueue
-    if (!f.declared ()) {
-      assert (f.fixed ());
+    // for units, we do have to enqueue (in case we backtracked and already added it)
+    if (f.fixed ()) {
       continue;
     }
-    mark_active (idx);
+
+    if (f.declared ())
+      mark_active (idx);
+    // otherwise, reactivating literal
     init_enqueue (idx);
+
     // due to propagation and backtracking, the literal might have already been
     // added
     if (!scores.contains (idx)) {
@@ -1352,7 +1355,7 @@ void Internal::activating_all_new_imported_literals () {
       scores.push_back (idx);
     }
     assert (scores.contains(idx));
-    assert (f.active ());
+    assert (f.active () || f.fixed ());
   }
 
   stats.vars += imports.size ();

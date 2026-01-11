@@ -1,4 +1,5 @@
 #include "internal.hpp"
+#include <vector>
 
 namespace CaDiCaL {
 
@@ -7,7 +8,7 @@ namespace CaDiCaL {
 
 void Internal::init_enqueue (int idx) {
   Link &l = links[idx];
-  assert (flags (idx).active ());
+  assert (flags (idx).active () || flags (idx).fixed ());
   if (!opts.varprioritizefirst) {
     LOG ("enqueueing %s at the beginning", LOGLIT(idx));
     l.prev = 0;
@@ -97,13 +98,33 @@ void Internal::shuffle_queue () {
 
 void Internal::check_queue () {
   int res = queue.first;
+  std::vector<bool> seen;
+  seen.resize (max_var+1, false);
   while (res) {
     assert (!flags (res).declared () && !flags (res).unused ());
+    seen [res] = true;
     int next = links[res].next;
     if (!next) break;
     assert (links[next].prev == res);
+    assert (btab[next] > btab[res]);
     res = next;
   }
+
+  res = queue.last;
+  while (res != queue.unassigned) {
+    assert (!flags (res).declared () && !flags (res).unused ());
+    assert (internal->val (res));
+    res = links[res].prev;
+    assert (res);
+  }
+
+  for (auto v : vars) {
+    if (!active (v))
+      continue;
+    assert (seen[v]);
+  }
+
+
 }
 
 } // namespace CaDiCaL

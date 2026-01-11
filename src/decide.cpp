@@ -225,6 +225,7 @@ int Internal::decide () {
   // (for example by observed).
   if (!imports.empty())
     activating_all_new_imported_literals ();
+  check_queue();
   int res = 0;
   if ((size_t) level < assumptions.size ()) {
     const int lit = assumptions[level];

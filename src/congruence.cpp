@@ -5009,8 +5009,8 @@ bool Closure::propagate_binary_clauses_in_and_gates () {
       continue;
     if (c->size != 2)
       continue;
-    rhs[0] = -c->literals[0];
-    rhs[1] = -c->literals[1];
+    rhs[0] = find_eager_representative (-c->literals[0]);
+    rhs[1] = find_eager_representative (-c->literals[1]);
     std::sort (begin (rhs), end (rhs),
                sort_literals_by_var_smaller (internal));
     Gate *h = find_and_lits (rhs);
@@ -5018,16 +5018,19 @@ bool Closure::propagate_binary_clauses_in_and_gates () {
       continue;
     if (internal->val (h->lhs) < 0)
       continue;
-    LOG (c, "the clause seen as gate false = %s & %s", LOGLIT (rhs[0]),
+    LOG (c, "the clause seen as gate false = %s & %s =", LOGLIT (rhs[0]),
          LOGLIT (rhs[1]));
     LOG (h, "can be merged with");
     if (internal->lrat) {
+      c = produce_rewritten_clause_lrat (c, 0, false);
+      assert (c);
       produce_rewritten_clause_lrat_and_clean (h->pos_lhs_ids (), h->lhs);
       for (auto reason : h->pos_lhs_ids ())
         lrat_chain.push_back (reason.clause->id);
       lrat_chain.push_back(c->id);
     }
     learn_congruence_unit (-h->lhs);
+    ++internal->stats.congruence.congruent_dummy_ands;
     found_new_unit = true;
   }
   rhs.clear ();
@@ -5055,6 +5058,8 @@ size_t Closure::propagate_units_and_equivalences () {
     }
 
     if (!internal->opts.congruenceanddummy)
+      break;
+    if (!internal->opts.congruenceand)
       break;
     found_new_unit = propagate_binary_clauses_in_and_gates ();
   } while (found_new_unit && !internal->unsat);

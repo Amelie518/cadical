@@ -400,6 +400,7 @@ struct Stats {
     int64_t subsumed = 0;
     int64_t trivial_ite = 0;
     int64_t unary_ites = 0;
+    int64_t congruent_dummy_ands = 0;
   } congruence;
 
   struct {

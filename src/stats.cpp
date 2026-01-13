@@ -836,6 +836,9 @@ void Stats::print (Internal *internal) {
     PRT ("   subsumed:     %15" PRId64 "   %10.2f%%  per round",
          stats.congruence.subsumed,
          relative (stats.congruence.subsumed, stats.congruence.rounds));
+    PRT ("   dummy-ands:     %15" PRId64 "   %10.2f%%  per round",
+         stats.congruence.congruent_dummy_ands,
+         relative (stats.congruence.congruent_dummy_ands, stats.congruence.rounds));
   }
 
   LINE ();

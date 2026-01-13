@@ -246,10 +246,10 @@ struct Internal {
   bool force_no_backtrack;      // for new clauses with external propagator
   bool from_propagator;         // differentiate new clauses...
   bool ext_clause_forgettable;  // Is new clause from propagator forgettable
-  bool unsat_constraint;     // constraint used for unsatisfiability?
-  bool marked_failed;        // are the failed assumptions marked?
-  bool sweep_incomplete;      // sweep
-  int changed_val;              // used for ILB
+  bool unsat_constraint;        // constraint used for unsatisfiability?
+  bool marked_failed;           // are the failed assumptions marked?
+  bool sweep_incomplete;        // sweep
+  int earliest_changed_val;     // earliest literal whose value was changed but was not notified yet. Only relevant for ILB (otherwise, we backtrack, so no renotification is needed).
   size_t notified;           // next trail position to notify external prop
   Clause *probe_reason;      // set during probing
   size_t propagated;         // next trail position to propagate
@@ -273,6 +273,7 @@ struct Internal {
 
   vector<int> sweep_schedule; // remember sweep varibles to reschedule
   uint64_t randomized_deciding;
+  vector <int> imports;      // impported literals (ordered by order of appearance)
 
   kitten *citten;
 
@@ -336,10 +337,18 @@ struct Internal {
   // 'External' and 'Solver'.  The 'init_vars' function initializes
   // variables up to and including the requested variable index.
   //
-  void init_vars (int new_max_var);
+  void init_and_declare_vars (int new_max_var);
+
+  // Enlarge the external to internal data structures up to the index without
+  // activating any literal.
+  void reserve_vars (int new_max_var);
+
+  void activating_all_new_imported_literals ();
+  void declare_variable (int);
 
   void init_enqueue (int idx);
   void init_queue (int old_max_var, int new_max_var);
+  void check_queue ();
 
   void init_scores (int old_max_var, int new_max_var);
 
@@ -365,6 +374,7 @@ struct Internal {
 #ifndef NDEBUG
     int tmp = max_var;
     tmp -= stats.unused;
+    tmp -= stats.declared;
     tmp -= stats.now.fixed;
     tmp -= stats.now.eliminated;
     tmp -= stats.now.substituted;
@@ -683,6 +693,7 @@ struct Internal {
   // Mark (active) variables as eliminated, substituted, pure or fixed,
   // which turns them into inactive variables.
   //
+  void mark_declared (int);
   void mark_eliminated (int);
   void mark_substituted (int);
   void mark_active (int);
@@ -1854,7 +1865,7 @@ inline int External::fixed (int elit) const {
   int eidx = abs (elit);
   if (eidx > max_var)
     return 0;
-  int ilit = e2i[eidx];
+  int ilit = internal_lit (eidx);
   if (!ilit)
     return 0;
   if (elit < 0)

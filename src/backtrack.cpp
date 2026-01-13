@@ -15,6 +15,9 @@ inline void Internal::unassign (int lit) {
   LOG ("unassign %d @ %d", lit, var (idx).level);
   num_assigned--;
 
+  if (flags (idx).declared ())
+    return;
+
   // In the standard EVSIDS variable decision heuristic of MiniSAT, we need
   // to push variables which become unassigned back to the heap.
   //
@@ -86,7 +89,7 @@ void Internal::backtrack (int new_level) {
   if (new_level == level)
     return;
 
-  update_target_and_best ();
+  //update_target_and_best ();
   backtrack_without_updating_phases (new_level);
 }
 
@@ -177,10 +180,10 @@ void Internal::backtrack_without_updating_phases (int new_level) {
 
   control.resize (new_level + 1);
   level = new_level;
-  if (changed_val) {
+  if (earliest_changed_val) {
     assert (opts.ilb);
-    if (!val (changed_val)) {
-      changed_val = 0;
+    if (!val (earliest_changed_val)) {
+      earliest_changed_val = 0;
     }
   }
   assert (num_assigned == trail.size ());

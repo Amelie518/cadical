@@ -268,24 +268,43 @@ void App::print_usage (bool all) {
 // Pretty print competition format witness with 'v' lines.
 
 void App::print_witness (FILE *file) {
-  int c = 0, i = 0, tmp = 0;
-  do {
-    if (!c)
-      fputc ('v', file), c = 1;
-    if (i++ == max_var)
-      tmp = 0;
-    else if (solver->external->ervars[i])
-      continue;
-    else
-      tmp = solver->val (i) < 0 ? -i : i;
-    char str[32];
-    snprintf (str, sizeof str, " %d", tmp);
-    int l = strlen (str);
-    if (c + l > 78)
-      fputs ("\nv", file), c = 1;
-    fputs (str, file);
-    c += l;
-  } while (tmp);
+  int c = 0, tmp = 0;
+  if (solver->internal->opts.modelalllits) {
+    for (auto elit = 1; elit <= solver->external->max_var; ++elit) {
+      if (!c)
+        fputc ('v', file), c = 1;
+      if (solver->external->ervars[elit])
+        continue;
+      else
+        tmp = solver->val (elit) < 0 ? -elit : elit;
+      char str[32];
+      snprintf (str, sizeof str, " %d", tmp);
+      int l = strlen (str);
+      if (c + l > 78)
+        fputs ("\nv", file), c = 1;
+      fputs (str, file);
+      c += l;
+
+    }
+  } else {
+    for (auto [elit, ilit] : solver->external->e2i) {
+      if (!c)
+        fputc ('v', file), c = 1;
+      if (!ilit)
+        continue;
+      if (solver->external->ervars[elit])
+        continue;
+      else
+        tmp = solver->val (elit) < 0 ? -elit : elit;
+      char str[32];
+      snprintf (str, sizeof str, " %d", tmp);
+      int l = strlen (str);
+      if (c + l > 78)
+        fputs ("\nv", file), c = 1;
+      fputs (str, file);
+      c += l;
+    }
+  }
   if (c)
     fputc ('\n', file);
 }

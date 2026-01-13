@@ -7,6 +7,11 @@ Version 3.0.X
 - Stronger congruence algorithm by taking more binary clauses into
   account, to produce a few more units.
 
+- Major rework of literal import. The option `reverse` was renamed `varprioritizefirst`.
+
+- For models, CaDiCaL now outputs only the literals that are present
+  in the problem. Use `modelalllits` to get all literals.
+
 Version 3.0.0
 -------------
 

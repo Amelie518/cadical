@@ -2383,6 +2383,7 @@ private:
   void generate_flipped (Random &, int vars);
   void generate_frozen (Random &, int vars);
   void generate_failed (Random &, int vars);
+  void generate_phase (Random &, int vars);
   void generate_conclude (Random &);
   void generate_freeze (Random &, int vars);
   void generate_melt (Random &);
@@ -3007,6 +3008,23 @@ void Trace::generate_frozen (Random &random, int vars) {
   }
 }
 
+void Trace::generate_phase (Random &random, int vars) {
+  if (random.generate_double () < 0.05)
+    return;
+  double fraction = random.generate_double ();
+  for (int idx = 1; idx <= vars; idx++) {
+    if (fraction < random.generate_double ())
+      continue;
+    int lit = random.generate_bool () ? -idx : idx;
+    push_back (new PhaseCall (lit));
+  }
+  if (random.generate_double () < 0.05) {
+    int idx = random.pick_int (vars + 1, vars * 1.5 + 1);
+    int lit = random.generate_bool () ? -idx : idx;
+    push_back (new PhaseCall (lit));
+  }
+}
+
 void Trace::generate_melt (Random &random) {
   if (random.generate_bool ())
     return;
@@ -3201,6 +3219,7 @@ void Trace::generate (uint64_t i, uint64_t s) {
     generate_melt (random);
     generate_freeze (random, maxvars);
     generate_limits (random);
+    generate_phase (random, maxvars);
 
     generate_process (random);
 

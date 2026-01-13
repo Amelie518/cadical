@@ -148,6 +148,8 @@ int Internal::trivially_false_satisfiable () {
     lucky_assume_decision (-idx);
     if (propagate ())
       continue;
+    if (flags (idx).unused ())
+      continue;
     assert (level > 0);
     LOG ("propagation failed including redundant clauses");
     return unlucky (0);
@@ -194,6 +196,8 @@ int Internal::trivially_true_satisfiable () {
     if (terminated_asynchronously (10))
       return unlucky (-1);
     if (val (idx))
+      continue;
+    if (flags (idx).unused ())
       continue;
     lucky_assume_decision (idx);
     if (propagate ())
@@ -245,12 +249,16 @@ int Internal::lucky_fixed_test (Iterator begin, Iterator end, signed char pol, s
   if (res)
     return res;
   for (auto it = begin; it != end; ++it) {
+    const int idx = *it;
+    if (flags (idx).unused ())
+      continue;
   START:
-    int idx = *it;
     int lit = idx * pol;
     if (terminated_asynchronously (10))
       return unlucky (-1);
     if (val (idx))
+      continue;
+    if (flags (idx).unused())
       continue;
     if (lucky_propagate_discrepency (lit)) {
       if (unsat)
@@ -278,11 +286,63 @@ int Internal::forward_true_satisfiable () {
 /*------------------------------------------------------------------------*/
 
 int Internal::backward_false_satisfiable () {
-  return lucky_fixed_test (vars.rbegin(), vars.rend (), -1, "backward");
+  LOG ("checking decreasing variable index false assignment");
+  assert (!unsat);
+  assert (!level);
+  stats.lucky.backward.zero++;
+  int res = lucky_decide_assumptions ();
+  if (res)
+    return res;
+  for (auto it = vars.rbegin (); it != vars.rend (); ++it) {
+    int idx = *it;
+    if (flags (idx).unused ())
+      continue;
+  START:
+    if (terminated_asynchronously (10))
+      return unlucky (-1);
+    if (val (idx))
+      continue;
+    if (lucky_propagate_discrepency (-idx)) {
+      if (unsat)
+        return 20;
+      else
+        return unlucky (0);
+    } else
+      goto START;
+  }
+  VERBOSE (1, "backward assuming variables false satisfies formula");
+  assert (satisfied ());
+  return 10;
 }
 
 int Internal::backward_true_satisfiable () {
-  return lucky_fixed_test (vars.rbegin(), vars.rend (), 1, "backward");
+  LOG ("checking decreasing variable index true assignment");
+  assert (!unsat);
+  assert (!level);
+  stats.lucky.backward.one++;
+  int res = lucky_decide_assumptions ();
+  if (res)
+    return res;
+  for (auto it = vars.rbegin (); it != vars.rend (); ++it) {
+    int idx = *it;
+    if (flags (idx).unused ())
+      continue;
+  START:
+    if (terminated_asynchronously (10))
+      return unlucky (-1);
+    if (val (idx))
+      continue;
+    if (lucky_propagate_discrepency (idx)) {
+      if (unsat)
+        return 20;
+      else
+        return unlucky (0);
+    } else
+      goto START;
+  }
+  VERBOSE (1, "backward assuming variables true satisfies formula");
+  assert (satisfied ());
+  return 10;
 }
 
 /*------------------------------------------------------------------------*/
@@ -376,7 +436,7 @@ int Internal::lucky_phases () {
   //
   // b. then use first the phases proviveded by the user (by default '1')
   if (opts.phase) {
-    if (!opts.reverse) {
+    if (!opts.varprioritizefirst) {
       schedule[schedule_pos++] = [this]() {return backward_true_satisfiable();};
       schedule[schedule_pos++] = [this]() {return backward_false_satisfiable();};
       schedule[schedule_pos++] = [this]() {return forward_true_satisfiable();};
@@ -388,7 +448,7 @@ int Internal::lucky_phases () {
       schedule[schedule_pos++] = [this]() {return backward_false_satisfiable();};
     }
   } else {
-    if (!opts.reverse) {
+    if (!opts.varprioritizefirst) {
       schedule[schedule_pos++] = [this]() {return backward_false_satisfiable();};
       schedule[schedule_pos++] = [this]() {return backward_true_satisfiable();};
       schedule[schedule_pos++] = [this]() {return forward_false_satisfiable();};
@@ -402,16 +462,19 @@ int Internal::lucky_phases () {
   }
   assert (schedule_pos == schedule_size);
 
-  if (opts.phase) {
-    if (!res)
-      res = trivially_true_satisfiable ();
-    if (!res)
-      res = trivially_false_satisfiable ();
-  } else {
-    if (!res)
-      res = trivially_false_satisfiable ();
-    if (!res)
-      res = trivially_true_satisfiable ();
+  if (res < 0)
+    assert (termination_forced), res = 0;
+  if (res == 10)
+    stats.lucky.succeeded++;
+  report ('l', !res);
+  assert (searching_lucky_phases);
+
+  assert (res || !level);
+  if (res != 20) {
+    if (!propagate ()) {
+      LOG ("propagating units after elimination results in empty clause");
+      learn_empty_clause ();
+    }
   }
 
   if (!res)

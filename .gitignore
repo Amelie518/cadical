@@ -3,6 +3,7 @@ makefile
 .aider*
 *~
 /*.trace
+/debug.json
 /*.cnf
 /*.lrat
 /*.drat

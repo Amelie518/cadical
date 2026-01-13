@@ -287,7 +287,9 @@ void App::print_witness (FILE *file) {
 
     }
   } else {
-    for (auto [elit, ilit] : solver->external->e2i) {
+    for (auto /*[elit, ilit] C++17*/ eilit : solver->external->e2i) {
+      const int elit = eilit.first;
+      const int ilit = eilit.second;
       if (!c)
         fputc ('v', file), c = 1;
       if (!ilit)

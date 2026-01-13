@@ -97,6 +97,7 @@ void Internal::shuffle_queue () {
 
 
 void Internal::check_queue () {
+#ifndef NDEBUG
   int res = queue.first;
   std::vector<bool> seen;
   seen.resize (max_var+1, false);
@@ -123,8 +124,7 @@ void Internal::check_queue () {
       continue;
     assert (seen[v]);
   }
-
-
+#endif
 }
 
 } // namespace CaDiCaL

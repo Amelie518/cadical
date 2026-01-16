@@ -64,7 +64,7 @@ run () {
 
 #--------------------------------------------------------------------------#
 
-traces="`ls ../test/trace/*.trace|sed -e 's,.*/,,' -e 's,\.trace$,,'`"
+traces="`ls ../test/trace/*.trace ../test/trace/congruence/*.trace |sed -e 's,.*/,,' -e 's,\.trace$,,'`"
 numtraces="`echo $traces|wc -w`"
 msg "found $numtraces traces"
 

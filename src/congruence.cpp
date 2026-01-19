@@ -1741,13 +1741,7 @@ bool Closure::really_merge_literals (
   }
 
   if (val_lit) {
-    if (val_lit == val_other) {
-      LOG ("not merging lits %s and %s assigned to same value",
-           LOGLIT (lit), LOGLIT (other));
-      if (internal->lrat)
-        lrat_chain.clear ();
-      return false;
-    }
+    assert (val_lit != val_other);
     if (val_lit == -val_other) {
       LOG ("merging lits %s and %s assigned to inconsistent value",
            LOGLIT (lit), LOGLIT (other));

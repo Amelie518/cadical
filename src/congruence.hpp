@@ -844,6 +844,8 @@ struct Closure {
       Gate *g, std::vector<LRAT_ID> &reasons_implication,
       std::vector<LRAT_ID> &reasons_back, size_t idx1, size_t idx2);
 
+  // produces the lrat proof chain for an ITE when the cond is set to
+  // true or false.
   void simplify_ite_gate_condition_set (
       Gate *g, std::vector<LRAT_ID> &reasons_lrat,
       std::vector<LRAT_ID> &reasons_back_lrat, size_t idx1, size_t idx2);

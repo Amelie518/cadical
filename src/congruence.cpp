@@ -5614,53 +5614,41 @@ bool Closure::rewrite_ite_gate_to_and (
     }
   }
   if (val_lhs > 0) {
-    {
       const int lit = g->rhs[0];
       const char v = internal->val (lit);
+      assert (!internal->unsat);
+      // propagation should have set all values, unless (!) we are going through
+      // rewriting. So simulating it here, even if it very rarely happens.
       if (v > 0) {
-      } else if (!v) {
+        const int other = g->rhs[1];
+        if (internal->val (other))
+          return true;
+
+        // TODO idx1 or idx2?
+        if (internal->lrat) {
+          push_id_and_rewriting_lrat_unit (g->pos_lhs_ids()[idx1].clause,
+                                           Rewrite (), lrat_chain);
+        }
+        learn_congruence_unit (other);
+        // the other literal is handled by propagation (gate + equivalence clauses)
+        return true;
+      }
+      if (!v) {
         if (internal->lrat) {
           push_id_and_rewriting_lrat_unit (g->pos_lhs_ids()[idx1].clause,
                                            Rewrite (), lrat_chain);
         }
         learn_congruence_unit (cond_lit_to_learn_if_degenerated);
-      } else {
-        if (internal->lrat)
-          push_id_and_rewriting_lrat_unit (g->pos_lhs_ids()[idx1].clause,
-                                           Rewrite (), lrat_chain);
-        push_lrat_unit (-lit);
-        internal->learn_empty_clause ();
+        // the other literal is handled by propagation (gate + equivalence clauses)
         return true;
       }
-    }
-    if (!internal->unsat) {
-      const int lit = g->rhs[1];
-      const char v = internal->val (lit);
-      assert (dst == g->rhs[0] || dst == g->rhs[1] || -dst == g->rhs[0] ||
-              -dst == g->rhs[1]);
-      const int other = (dst == g->rhs[0] || dst == g->rhs[1])
-                            ? dst ^ g->rhs[0] ^ g->rhs[1]
-                            : (-dst) ^ g->rhs[0] ^ g->rhs[1];
-      if (v > 0) {
-        // already set by propagation
-        return true;
-      } else if (!v) {
-        if (internal->lrat) {
-          push_id_and_rewriting_lrat_unit (g->pos_lhs_ids()[idx2].clause,
-                                           Rewrite (), lrat_chain);
-        }
-        learn_congruence_unit (other);
-      } else {
-        if (internal->lrat) {
-          push_lrat_unit (cond_lit_to_learn_if_degenerated);
-          push_id_and_rewriting_lrat_unit (g->pos_lhs_ids()[idx2].clause,
-                                           Rewrite (), lrat_chain);
-        }
-        internal->learn_empty_clause ();
-        return true;
-      }
-    }
-    return true;
+
+      if (internal->lrat)
+        push_id_and_rewriting_lrat_unit (g->pos_lhs_ids()[idx2].clause,
+                                         Rewrite (), lrat_chain);
+      push_lrat_unit (-lit);
+      internal->learn_empty_clause ();
+      return true;
   }
   if (src == g->lhs)
     g->lhs = dst;
@@ -5720,13 +5708,11 @@ bool Closure::rewrite_ite_gate_to_and (
   assert (idx1 < g->pos_lhs_ids().size ());
   assert (idx2 < g->pos_lhs_ids().size ());
   int lit = g->pos_lhs_ids()[idx2].current_lit, other = g->lhs;
-  // TODO: remove argument
-  (void) src;
   produce_rewritten_clause_lrat_and_clean (g->pos_lhs_ids(), g->lhs, idx1,
                                            idx2, false);
 
   if ((idx1 == (size_t) -1 || idx2 == (size_t) -1)) {
-    // degenerated and gate
+    // degenerated and gate with nothing to be done
     return false;
   }
 

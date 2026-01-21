@@ -5770,19 +5770,8 @@ bool Closure::rewrite_ite_gate_to_and (
   (void) maybe_promote_tmp_binary_clause (g->pos_lhs_ids()[0].clause);
   g->pos_lhs_ids ().push_back ({lit, e});
 
-  if (internal->val (g->lhs) > 0) {
-    LOG ("unit propagations after converting the ITE gate to AND");
-    for (auto reason : g->pos_lhs_ids ()) {
-      push_lrat_unit (g->lhs);
-      push_id_and_rewriting_lrat_unit (reason.clause, Rewrite (),
-                                       lrat_chain);
-      learn_congruence_unit(reason.current_lit, true);
-    }
-    g->garbage = true;
-  }
   if (val_lhs < 0)
     g->degenerated_gate = Special_Gate::DEGENERATED_AND_LHS_FALSE;
-  
 #ifndef NDEBUG
   for (auto litId : g->pos_lhs_ids()) {
     bool found = false;

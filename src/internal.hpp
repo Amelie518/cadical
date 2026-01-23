@@ -1678,6 +1678,10 @@ struct Internal {
   }
   void melt (int lit) {
     int idx = vidx (lit);
+    if ((size_t)idx < frozentab.size ()) {
+      LOG ("variable %d completely molten", idx);
+      return;
+    }
     unsigned &ref = frozentab[idx];
     if (ref < UINT_MAX) {
       if (!--ref) {

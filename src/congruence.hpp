@@ -85,8 +85,8 @@ typedef int64_t LRAT_ID;
 //   - the eager version that gets the merges one by one, with functions
 //   like find_eager_representatives
 //
-//  The two structures are nicely separated and we only working on one of
-//  them except for:
+// The two structures are nicely separated and we only working on one of them
+// except for:
 //
 //    1. When propagating one equivalence, we first important the
 //    equivalence from the lazy to the eager version, producing the full
@@ -100,6 +100,7 @@ typedef int64_t LRAT_ID;
 // performance (don't forget to take the gate type into consideration!). We
 // decided to use the default std::hash and played with the number of buckets,
 // but did not see much difference.
+
 struct Internal;
 // Here come some implementation remarks.
 //
@@ -109,17 +110,26 @@ struct Internal;
 // However, we can only have 2 layers so we use this->lrat_chain and
 // internal->lrat_chain when we really produce the proof.
 //
+// One of the tricky things throughout the proofs is that the LHS is *not*
+// rewritten ever. This means that the normalization need to ignore the LHS of
+// gates during normalization. We might also ignore two literals (like in XOR
+// gates during merges). Be careful with this, it is really really hard to
+// trigger bugs if you ignore the wrong literal. They do happen, but it is
+// rather rare (consider that an entire week-end with 24 cores will not find all
+// of those issues).
 #define LD_MAX_ARITY 26
 #define MAX_ARITY ((1 << LD_MAX_ARITY) - 1)
 
 /*------------------------------------------------------------------------*/
-
+// Tags to indentify the kind of gates.
 enum class Gate_Type : int8_t { And_Gate, XOr_Gate, ITE_Gate };
 std::string string_of_gate (Gate_Type t);
 
 /*------------------------------------------------------------------------*/
-
-// Wrapper when we are looking for implication in if-then-else gates
+// Wrapper when we are looking for implication in if-then-else gates. This is
+// done in two steps: finding implications, then finding equivalences. Both of
+// them are conditional, but the condition is only in the context not in the
+// structure. Without LRAT we would not need to remember the gate.
 struct lit_implication {
   int first;
   int second;
@@ -174,12 +184,18 @@ struct lit_equivalence {
 typedef std::vector<lit_implication> lit_implications;
 typedef std::vector<lit_equivalence> lit_equivalences;
 
+/*------------------------------------------------------------------------*/
+// Main structure for our LRAT proofs: a literal (or a number for XOR gates) and
+// the corresponding clause.
 struct LitClausePair {
   int current_lit; // current literal from the gate
   Clause *clause;
   LitClausePair (int lit, Clause *cl) : current_lit (lit), clause (cl) {}
   LitClausePair () : current_lit (0), clause (nullptr) {}
 };
+
+/*------------------------------------------------------------------------*/
+// Used for XOR gate detection, synonym of std::pair<int,LRAT_ID>.
 struct LitIdPair {
   int lit; // current literal from the gate
   LRAT_ID id;
@@ -207,6 +223,12 @@ struct smaller_clause_size_rank {
 };
 
 /*------------------------------------------------------------------------*/
+// For LRAT, we want to remember if the gate is not normal, namely that it does
+// not have the normal number of clauses.
+//
+// We make the enumeration over integers to make it easier to combine values
+// togethen.
+//
 // There are many special cases for ITE gates and we have to keep track of
 // them as it is a gate property (rewriting might not make it obvious
 // anymore).

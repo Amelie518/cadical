@@ -21,25 +21,62 @@ namespace CaDiCaL {
 
 typedef int64_t LRAT_ID;
 
-// This implements the algorithm algorithm from SAT 2024.
+// This implements the clausal congruence algorithm from Biere at
+// al. [SAT 2024]. Wer refer to the paper for details, but in
+// essence, the idea is to detect gate definitions in the set of
+// clauses.
 //
-// The idea is to:
-//   0. handle binary clauses
-//   1. detect gates and merge gates with same inputs ('lazy')
-//   2. eagerly replace the equivalent literals and merge gates with same
-//   inputs
-//   3. forward subsume
+// The algorithm works by detecting equivalences and rewriting them in the gates
+// (not in the clauses that defines them yet! this is done later in decompose).
 //
-// In step 0 the normalization is fully lazy but we do not care about a
-// normal form. Therefore we actually eagerly merge literals.
+// In Step 0, we do simplification over the binary and ternary clauses. This is
+// actually more aggressive and a subset of what decompose and ternary.
 //
-// In step 2 there is a subtility: we only replace with the equivalence
-// chain as far as we propagated so far. This is the eager part. For LRAT we
-// produce the equivalence up to the point we have propagated, no the full
-// chain. This is important for merging literals.  To merge literals we use
-// union-find but we only compress paths when rewriting the literal, not
-// before. The compression was not considered important in Kissat, but we do
-// it aggressively as a mirror of the equivalences we have generated.
+// In Step 1, we detect all gates in the input clauses.
+//
+// In Step 2, we start the replacement. the rewriting is done eagerly over the
+// equivalences rewritten so far, not over the equivalence detected. This is
+// probably not necessary but makes detecting gates faster than if we would
+// eagerly rewrite everything. After each rewriting:
+//
+// - we detect if the gate was already present. If it was, we can merge both LHS
+// of the gates.
+//
+// - we simplify the gates, leading to potentially units.
+//
+// This rewriting of everything so far is done 'eagerly', while the set of all
+// detected equivalences is the 'lazy' part of the algorithm. Each rewriting in
+// the 'lazy' part is slowly imported in the 'eager' part. We favor simplifying
+// gates over rewriting, but do not interrupt a rewriting round. Therefore, we
+// still have to handle the detection of units during rewriting.
+//
+// We do not try to detect new gates, we only convert ITE gates to AND gates or
+// XOR gates after rewriting or simplifications.
+//
+// The rewritings are done to the normal form according to the lazy
+// normalization. This is an important point for performance.
+//
+// Step 3: Finally, after rewriting everything, we can forward subsume the
+// clauses, but we let the full rewriting and the replacement be done by
+// decompose.
+//
+// In CaDiCaL we have ported the entire algorithm to LRAT, which was not
+// supported in Kissat. This actually forced us to detect more cases of units
+// and special cases that Kissat misses, because it often made the proofs easier
+// to generate (fewer special cases of units or duplicated literals).
+//
+// While the idea is generally easy, it is extremely complicated to do in
+// practise and getting to the last cases is an absolutely horrible experience.
+// There is at least one corner case in the cade that we only managed to reach
+// after fuzzing (optimized) after nearly one week of fuzzing over a 64 core
+// machine (not including the 32 + 24 cores that we used sporadically and did
+// not hit those cases either).
+//
+// Because of LRAT we changed some things compared to Kissat: the algorithm
+// relies on a union-find datastructure. In Kissat there is no path compression.
+// Here, we do actually compress paths but only if we generated the binary
+// clauses corresponding to that equivalence. This compression did improve
+// performance according to Armin and was not considered important in Kissat.
 //
 // We have two structures for merging:
 //   - the lazy ones contains alls merges, with functions like
@@ -59,17 +96,28 @@ typedef int64_t LRAT_ID;
 //    structure, then we merge their representative in the eager version,
 //    updating only the lazy structure. We do not update the eager version.
 //
+// We experimented with the hash function and found that it has a huge impact on
+// performance (don't forget to take the gate type into consideration!). We
+// decided to use the default std::hash and played with the number of buckets,
+// but did not see much difference.
+struct Internal;
+// Here come some implementation remarks.
+//
 // An important point: We cannot use internal->lrat_chain and
 // internal->clause because in most places we can interrupt the
 // transformation to learn a new clause representing an equivalence.
 // However, we can only have 2 layers so we use this->lrat_chain and
 // internal->lrat_chain when we really produce the proof.
-struct Internal;
-
+//
 #define LD_MAX_ARITY 26
 #define MAX_ARITY ((1 << LD_MAX_ARITY) - 1)
 
+/*------------------------------------------------------------------------*/
+
 enum class Gate_Type : int8_t { And_Gate, XOr_Gate, ITE_Gate };
+std::string string_of_gate (Gate_Type t);
+
+/*------------------------------------------------------------------------*/
 
 // Wrapper when we are looking for implication in if-then-else gates
 struct lit_implication {
@@ -126,8 +174,6 @@ struct lit_equivalence {
 typedef std::vector<lit_implication> lit_implications;
 typedef std::vector<lit_equivalence> lit_equivalences;
 
-std::string string_of_gate (Gate_Type t);
-
 struct LitClausePair {
   int current_lit; // current literal from the gate
   Clause *clause;
@@ -145,7 +191,7 @@ struct LitIdPair {
 
 // Sorting the scheduled clauses is way faster if we compute and save the
 // clause size in the schedule to avoid pointer access to clauses during
-// sorting.  This slightly increases the schedule size though.
+// sorting.  This doubles the schedule size though.
 
 struct ClauseSize {
   size_t size;
@@ -212,7 +258,11 @@ inline bool ite_flags_cond_lhs (int8_t flag) {
   return (flag & COND_LHS) == COND_LHS;
 }
 
-// std::optional is C++17 sadly
+
+/*------------------------------------------------------------------------*/
+// We need an std::option for optional LRAT reasons. We initially used
+// std::optional, but std::optional is C++17 sadly, so we used an alternative.
+// Actually, std::optional has bad performance under some systems.
 struct my_dummy_optional {
   LitClausePair content;
   my_dummy_optional () : content (0, 0) {}
@@ -259,9 +309,13 @@ struct my_dummy_optional {
 // struct for LRAT proofs. Therefore, we actually need a proper
 // constructor/destructor.
 //
+// Note from Mathias: I did not believe that FMA would help, but there are
+// problems with several dozen GB of memory. And for those instances, the
+// improvements are very important more than 10%.
+//
 // We initially had the vector for lrat as part of the structure. As the memory
 // usage is extremely high we tried to get rid of it and we observed a memory
-// overhead of 2GB on `hash_table_find_safety_size_29.cnf.xz` by using a
+// reduction of 2GB on `hash_table_find_safety_size_29.cnf.xz` by using a
 // pointer to something that is not initialized.
 struct Gate {
 #ifdef LOGGING
@@ -269,7 +323,7 @@ struct Gate {
 #endif
   struct LRAT_Reasons {
     vector<LitClausePair> pos_lhs_ids;
-    my_dummy_optional neg_lhs_ids;
+    my_dummy_optional neg_lhs_id;
   } *lrat_reasons;
   int lhs;
   Gate_Type tag;
@@ -341,9 +395,9 @@ struct Gate {
     assert (lrat_reasons);
     return lrat_reasons->pos_lhs_ids;
   }
-  my_dummy_optional& neg_lhs_ids () {
+  my_dummy_optional& neg_lhs_id () {
     assert (lrat_reasons);
-    return lrat_reasons->neg_lhs_ids;
+    return lrat_reasons->neg_lhs_id;
   }
   const vector<LitClausePair>& pos_lhs_ids () const {
     assert (lrat_reasons);
@@ -351,7 +405,7 @@ struct Gate {
   }
   const my_dummy_optional& neg_lhs_ids () const {
     assert (lrat_reasons);
-    return lrat_reasons->neg_lhs_ids;
+    return lrat_reasons->neg_lhs_id;
   }
 };
 
@@ -370,21 +424,15 @@ struct GateEqualTo {
   }
 };
 
-struct CompactBinary {
-  Clause *clause;
-  LRAT_ID id;
-  int lit1, lit2;
-  CompactBinary (Clause *c, LRAT_ID i, int l1, int l2)
-      : clause (c), id (i), lit1 (l1), lit2 (l2) {}
-  CompactBinary () : clause (nullptr), id (0), lit1 (0), lit2 (0) {}
-};
-
 struct Hash {
   Hash (std::array<uint64_t, 16> &ncs) : nonces (ncs) {}
   const std::array<uint64_t, 16> &nonces;
   inline size_t operator() (const Gate *const g) const;
 };
 
+/*------------------------------------------------------------------------*/
+// Useful for LRAT generation to update the clauses in a controlled way,
+// pontentially overwriting the eager rewriting..
 struct Rewrite {
   int src, dst;
   LRAT_ID id1;
@@ -394,6 +442,20 @@ struct Rewrite {
       : src (_src), dst (_dst), id1 (_id1), id2 (_id2) {}
   Rewrite () : src (0), dst (0), id1 (0), id2 (0) {}
 };
+
+/*------------------------------------------------------------------------*/
+// This is a more compact representation of binary clauses. Sadly we have to
+// include the IDs in the clause making it larger than necessary.
+struct CompactBinary {
+  Clause *clause;
+  LRAT_ID id;
+  int lit1, lit2;
+  CompactBinary (Clause *c, LRAT_ID i, int l1, int l2)
+      : clause (c), id (i), lit1 (l1), lit2 (l2) {}
+  CompactBinary () : clause (nullptr), id (0), lit1 (0), lit2 (0) {}
+};
+
+/*------------------------------------------------------------------------*/
 
 struct Closure {
 

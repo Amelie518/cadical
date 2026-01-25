@@ -433,6 +433,8 @@ struct Gate {
 
 typedef vector<Gate *> GOccs;
 
+// Equality on gate inputs assuming that the literals are normalized in the same
+// way.
 struct GateEqualTo {
   bool operator() (const Gate *const lhs, const Gate *const rhs) const {
     if (lhs->tag != rhs->tag)
@@ -908,6 +910,22 @@ struct Closure {
                                        int cond, int then_lit,
                                        int else_lit);
 
+  // When we get a gate of the forem cond ? then_lit : !then_lit, we can convert
+  // it to the xor gate !(cond ^then_lit). However, there are special cases when
+  // lhs==cond, -lhs==cond, -lhs==then_lit, making it possible to assigns one
+  // unit (the lhs to true or false) or prove unsatisifiability if the literal
+  // is already assigned.
+  //
+  // We initially expected that propagations would take care of assigning those
+  // new units, but this is only the case after rewriting the clauses. Therefore
+  // we actually assign it here instead of waiting to make the clausal
+  // congruence stronger.
+  //
+  // We need extra clauses for DRAT, similar to those that are produced by
+  // rewriting the clauses for LRAT.
+  //
+  // Returns whethe the clause is garbage or not.
+  bool rewrite_ite_gate_else_to_not_then (Gate *g, int, int, int);
 
   // Transforms an ITE gate to an AND gate, taking care of the special cases
   // where some values are already set.

@@ -5483,6 +5483,75 @@ void Closure::produce_ite_merge_then_else_reasons (
   reasons_back.push_back (g->pos_lhs_ids()[3].clause->id);
 }
 
+bool Closure::rewrite_ite_gate_else_to_not_then (Gate *g, int cond, int then_lit, int lhs) {
+  bool garbage = false;
+  int not_lhs = -lhs;
+  const bool allow_empty_lrat_clause =
+      g->degenerated_gate != Special_Gate::NORMAL;
+  if (lhs == cond) {
+    if (internal->lrat) {
+      produce_rewritten_clause_lrat_and_clean (
+          g->pos_lhs_ids(), not_lhs, false, allow_empty_lrat_clause);
+      assert (g->pos_lhs_ids().size () == 2);
+      lrat_chain.push_back (g->pos_lhs_ids()[0].clause->id);
+      lrat_chain.push_back (g->pos_lhs_ids()[1].clause->id);
+    } else if (internal->proof) {
+      unsimplified.push_back(then_lit);
+      unsimplified.push_back(lhs);
+      simplify_and_add_to_proof_chain (unsimplified);
+      unsimplified[1] = -lhs;
+      simplify_and_add_to_proof_chain (unsimplified);
+      unsimplified.clear ();
+    }
+    learn_congruence_unit (then_lit);
+    delete_proof_chain();
+    garbage = true;
+  } else if (not_lhs == cond) {
+    if (internal->lrat) {
+      produce_rewritten_clause_lrat_and_clean (
+          g->pos_lhs_ids(), not_lhs, false, allow_empty_lrat_clause);
+      assert (g->pos_lhs_ids().size () == 2);
+      lrat_chain.push_back (g->pos_lhs_ids()[0].clause->id);
+      lrat_chain.push_back (g->pos_lhs_ids()[1].clause->id);
+    } else if (internal->proof) {
+      unsimplified.push_back(-then_lit);
+      unsimplified.push_back(lhs);
+      simplify_and_add_to_proof_chain (unsimplified);
+      unsimplified[1] = -lhs;
+      simplify_and_add_to_proof_chain (unsimplified);
+      unsimplified.clear ();
+    }
+    learn_congruence_unit (-then_lit);
+    delete_proof_chain();
+    garbage = true;
+  } else if (not_lhs == then_lit) {
+    if (internal->lrat) {
+      produce_rewritten_clause_lrat_and_clean (
+          g->pos_lhs_ids(), not_lhs, false, allow_empty_lrat_clause);
+      assert (g->pos_lhs_ids().size () == 2);
+      lrat_chain.push_back (g->pos_lhs_ids()[0].clause->id);
+      lrat_chain.push_back (g->pos_lhs_ids()[1].clause->id);
+    } else if (internal->proof) {
+      unsimplified.push_back(cond);
+      unsimplified.push_back(lhs);
+      simplify_and_add_to_proof_chain (unsimplified);
+      unsimplified[1] = -lhs;
+      simplify_and_add_to_proof_chain (unsimplified);
+      unsimplified.clear ();
+    }
+    learn_congruence_unit (cond);
+    delete_proof_chain();
+    garbage = true;
+  } else {
+    g->lhs = not_lhs;
+    assert (g->rhs[0] == cond);
+    assert (g->rhs[1] == then_lit);
+    assert (g->rhs[0] != g->lhs);
+    assert (g->rhs[1] != g->lhs);
+  }
+  return garbage;
+}
+
 // covered
 void Closure::rewrite_ite_gate_update_lrat_reasons (Gate *g, int src,
                                                     int dst) {
@@ -6450,53 +6519,8 @@ void Closure::rewrite_ite_gate (Gate *g, int dst, int src) {
       // only useful for debugging
       //
       // In various cases like x = x ? t : e with e -> -t, we can assign literals.
-      const bool allow_empty_lrat_clause =
-          g->degenerated_gate != Special_Gate::NORMAL;
-      if (lhs == cond) {
-        if (internal->lrat) {
-          produce_rewritten_clause_lrat_and_clean (
-              g->pos_lhs_ids(), not_lhs, false, allow_empty_lrat_clause);
-          assert (g->pos_lhs_ids().size () == 2);
-          lrat_chain.push_back (g->pos_lhs_ids()[0].clause->id);
-          lrat_chain.push_back (g->pos_lhs_ids()[1].clause->id);
-        } else if (internal->proof && internal->val (then_lit) < 0) {
-	  internal->proof->add_derived_unit_clause (++internal->clause_id, lhs, {});
-        }
-        learn_congruence_unit (then_lit);
-        garbage = true;
-      } else if (not_lhs == cond) {
-        if (internal->lrat) {
-          produce_rewritten_clause_lrat_and_clean (
-              g->pos_lhs_ids(), not_lhs, false, allow_empty_lrat_clause);
-          assert (g->pos_lhs_ids().size () == 2);
-          lrat_chain.push_back (g->pos_lhs_ids()[0].clause->id);
-          lrat_chain.push_back (g->pos_lhs_ids()[1].clause->id);
-        } else if (internal->proof && internal->val (-then_lit) < 0) {
-	  internal->proof->add_derived_unit_clause (++internal->clause_id, lhs, {});
-        }
-        learn_congruence_unit (-then_lit);
-        garbage = true;
-      } else if (not_lhs == then_lit) {
-        if (internal->lrat) {
-	  COVER (721);
-          produce_rewritten_clause_lrat_and_clean (
-              g->pos_lhs_ids(), not_lhs, false, allow_empty_lrat_clause);
-          assert (g->pos_lhs_ids().size () == 2);
-          lrat_chain.push_back (g->pos_lhs_ids()[0].clause->id);
-          lrat_chain.push_back (g->pos_lhs_ids()[1].clause->id);
-        } else if (internal->proof && internal->val (-cond) < 0) {
-	  internal->proof->add_derived_unit_clause (++internal->clause_id, lhs, {});
-        }
-        learn_congruence_unit (cond);
-        garbage = true;
-      } else {
-        new_tag = Gate_Type::XOr_Gate;
-        g->lhs = not_lhs;
-        assert (rhs[0] == cond);
-        assert (rhs[1] == then_lit);
-        assert (rhs[0] != g->lhs);
-        assert (rhs[1] != g->lhs);
-      }
+      garbage = rewrite_ite_gate_else_to_not_then (g, cond, then_lit, lhs);
+      new_tag = Gate_Type::XOr_Gate;
     } else {
       shrink = false;
       rhs[2] = dst;

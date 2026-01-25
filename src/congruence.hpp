@@ -634,7 +634,6 @@ struct Closure {
 
   // proof production
   vector<LitClausePair> lrat_chain_and_gate;
-  void push_lrat_id (const Clause *const c, int lit);
   void push_lrat_unit (int lit);
 
   // pushes the clause with the reasons to rewrite clause
@@ -936,13 +935,18 @@ struct Closure {
   // with the LHS already in the RHS and updating the clauses in the gate.
   bool rewrite_ite_gate_to_xor (Gate *g);
 
+  // Simplifies the ITE gate lhs := cond ? then_lit : then_lit to "lhs =
+  // then_lit", producing the lrat reasons for the merge. The function also
+  // takes care of the case lhs == cond or lhs == -cond where several gate
+  // clauses are missing.
   void produce_ite_merge_then_else_reasons (
       Gate *g, int dst, int src, std::vector<LRAT_ID> &reasons_implication,
       std::vector<LRAT_ID> &reasons_back);
-  void produce_ite_merge_lhs_then_else_reasons (
-      Gate *g, std::vector<LRAT_ID> &reasons_implication,
-      std::vector<LRAT_ID> &reasons_back,
-      std::vector<LRAT_ID> &reasons_unit, bool, bool &);
+
+  // Special case of ITE gate -dst := cond ? dst : else, leading do the unit
+  // -cond and the merge -dst == else. For degenerated cases, we failed to
+  // produce the lrat reason for the merge and first derive the unit.
+  bool produce_ite_merge_lhs_then_else_reasons (Gate *g, bool, int);
   void produce_ite_merge_rhs_cond (Gate *g, int, int);
   void rewrite_ite_gate_update_lrat_reasons (Gate *g, int src, int dst);
   void simplify_ite_gate_produce_unit_lrat (Gate *g, int lit, size_t idx1,

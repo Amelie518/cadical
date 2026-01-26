@@ -2682,14 +2682,21 @@ void Closure::update_and_gate (Gate *g, GatesTable::iterator it, int src,
       lrat_chain.clear ();
   } else if (g->arity () == 1) {
     const signed char v = internal->val (g->lhs);
-    if (v > 0) {
-      if (internal->lrat)
-        learn_congruence_unit_falsifies_lrat_chain (g, src, dst, 0, 0,
-                                                    g->lhs);
-      learn_congruence_unit (g->rhs[0]);
-      if (internal->lrat)
-        lrat_chain.clear ();
-    } else if (v < 0) {
+    // The assymetry comes from the AND gate and the conversion ITE to AND. If
+    // the LHS is true, we can directly propagate all the values on the RHS.
+    // This is done either directly by propagation or during the ITE to AND
+    // conversion.
+    //
+    // However, when the LHS is false, then we cannot set any value and have to
+    // handle it here.
+    //
+    // Remark that Kissat needs the code to handle v > 0, because it does not
+    // have the simplification during the ITE to AND conversion. It is not clear
+    // if this makes CaDiCaL more complete (it basically depends whether the
+    // literal was already propagated or not: if not, the propagation might be
+    // delayed to decompode later)
+    assert (v <= 0);
+    if (v < 0) {
       if (internal->lrat)
         learn_congruence_unit_when_lhs_set (g, src, id1, id2, dst);
       learn_congruence_unit (-g->rhs[0]);
@@ -5708,6 +5715,7 @@ bool Closure::rewrite_ite_gate_to_and (
     }
   }
   if (val_lhs > 0) {
+      // This actually make some code easier later with fewer cases.
       const int lit = g->rhs[0];
       const char v = internal->val (lit);
       assert (!internal->unsat);

@@ -1311,6 +1311,7 @@ void Closure::learn_congruence_unit_falsifies_lrat_chain (
   assert (lrat_chain.empty ());
   std::vector<LRAT_ID> proof_chain;
   assert (g->tag == Gate_Type::And_Gate);
+  COVER (!clashing && !falsified);
   if (clashing) {
     LOG ("clashing %d where -lhs=%d", clashing, -g->lhs);
     // Example: -2 = 1&3 and 3=2
@@ -1512,30 +1513,6 @@ bool Closure::merge_literals (
   if (g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE ||
       h->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE) {
     LOG ("merging special AND case with both side < 0");
-    assert (internal->val (g->lhs) < 0 || internal->val (h->lhs) < 0);
-    assert (internal->val (g->lhs) != internal->val (h->lhs));
-    lrat_chain =
-        extra_reasons_lit.empty () ? extra_reasons_ulit : extra_reasons_lit;
-    const int unass = internal->val (g->lhs) < 0 ? h->lhs : g->lhs;
-    learn_congruence_unit (-unass);
-    return false;
-  }
-
-  LOG ("special case %d %d %d %d",
-       g->degenerated_gate == Special_Gate::DEGENERATED_AND,
-       internal->val (h->lhs) < 0,
-       h->degenerated_gate == Special_Gate::DEGENERATED_AND,
-       internal->val (g->lhs) < 0);
-  COVER ((g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE &&
-       internal->val (h->lhs) < 0));
-  COVER (
-      (h->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE &&
-       internal->val (g->lhs) < 0));
-  if ((g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE &&
-       internal->val (h->lhs) < 0) ||
-      (h->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE &&
-       internal->val (g->lhs) < 0)) {
-    LOG ("merging special AND case");
     assert (internal->val (g->lhs) < 0 || internal->val (h->lhs) < 0);
     assert (internal->val (g->lhs) != internal->val (h->lhs));
     lrat_chain =
@@ -5694,7 +5671,7 @@ bool Closure::rewrite_ite_gate_to_and (
         // the other literal is handled by propagation (gate + equivalence clauses)
         return true;
       }
-
+      assert (v < 0);
       if (internal->lrat)
         produce_lrat_chain_for_rewriting (g->pos_lhs_ids()[idx2].clause,
                                          Rewrite (), lrat_chain);

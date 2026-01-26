@@ -6737,9 +6737,7 @@ bool Closure::simplify_ite_gate_to_and (Gate *g, size_t idx1, size_t idx2,
   assert (lit);
   assert (other);
   assert (lit != other);
-  COVER (!c);
-  if (c)
-    lrat_chain.push_back (c->id);
+  lrat_chain.push_back (c->id);
   lrat_chain.push_back (d->id);
   Clause *e = add_tmp_binary_clause (lit, -other);
 

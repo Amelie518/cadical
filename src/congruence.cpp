@@ -1883,7 +1883,7 @@ inline void Closure::promote_clause (Clause *c) {
 // therefore you actually need to learn the clauses 2->3->4 and -2->1 and
 // vice-versa
 // TODO covered
-bool Closure::merge_literals_equivalence (int lit, int other, Clause *c1,
+bool Closure::merge_literals (int lit, int other, Clause *c1,
                                           Clause *c2) {
   assert (!internal->unsat);
   LRAT_ID id1 = c1 ? c1->id : 0;
@@ -4547,7 +4547,7 @@ void Closure::find_equivalences () {
           promote_clause (w.clause);
           LOG (w.clause, "merging");
           LOG (marked_mu1 (-other).clause, "with");
-          if (merge_literals_equivalence (
+          if (merge_literals (
                   lit, other,
                   internal->lrat ? marked_mu1 (-other).clause : nullptr,
                   w.clause)) {
@@ -5583,7 +5583,7 @@ bool Closure::rewrite_ite_gate_to_xor (Gate *g) {
         maybe_add_binary_clause (-g->lhs, g->rhs[0]);
         maybe_add_binary_clause (g->lhs, -g->rhs[0]);
       }
-      merge_literals_equivalence (g->lhs, g->rhs[0], c1, c2);
+      merge_literals (g->lhs, g->rhs[0], c1, c2);
       garbage = true;
     } else if (internal->lrat){
       rewrite_clauses_and_clean (g->pos_lhs_ids (), g->lhs,

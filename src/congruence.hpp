@@ -609,8 +609,12 @@ struct Closure {
   // clauses involved in gates to make sure that we produce correct result.
   void promote_clause (Clause *);
 
-  // Merge functions. We actually need different several versions for LRAT
-  // in order to simplify the proof production.
+  // Merge functions. We actually need different several versions for LRAT in
+  // order to simplify the proof production. We distinguish between the
+  // functions that the clauses as argumunts and the functions that takes the
+  // LRAT chains as argument. The latter will learn additional clauses, while
+  // the former already knows those additional clauses and only has to merge the
+  // representants.
   //
   // When merging binary clauses, we can simply produce the LRAT chain by
   // (1) using the two binary clauses and (2) the reason clause from the
@@ -629,7 +633,7 @@ struct Closure {
   // (by combining it with the rewrite).  In DRAT this is less important
   // because the checker finds a chain and is less restricted than our LRAT
   // chain.
-  bool merge_literals_equivalence (int lit, int other, Clause *c1,
+  bool merge_literals (int lit, int other, Clause *c1,
                                    Clause *c2);
   bool merge_literals (Gate *g, Gate *h, int lit, int other,
                        const std::vector<LRAT_ID> & = {},

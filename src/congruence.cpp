@@ -1913,6 +1913,7 @@ bool Closure::merge_literals_equivalence (int lit, int other, Clause *c1,
   const int val_other = internal->val (other);
 
   if (val_lit) {
+    COVER (!val_other);
     if (val_lit == val_other) {
       COVER (true);
       LOG ("not merging lits %d and %d assigned to same value", lit, other);
@@ -5630,43 +5631,37 @@ bool Closure::rewrite_ite_gate_to_and (
     }
   }
   if (val_lhs > 0) {
-      // This actually make some code easier later with fewer cases.
-      const int lit = g->rhs[0];
-      const char v = internal->val (lit);
-      assert (!internal->unsat);
-      // propagation should have set all values, unless (!) we are going through
-      // rewriting. So simulating it here, even if it very rarely happens.
-      if (v > 0) {
-        const int other = g->rhs[1];
-        if (internal->val (other))
-          return true;
+    // This actually make some code easier later with fewer cases.
+    const int lit = g->rhs[0];
+    const char v = internal->val (lit);
+    assert (!internal->unsat);
+    // propagation should have set all values, unless (!) we are going through
+    // rewriting. So simulating it here, even if it very rarely happens.
 
-        // TODO idx1 or idx2?
-        if (internal->lrat) {
-          produce_lrat_chain_for_rewriting (g->pos_lhs_ids()[idx1].clause,
-                                           Rewrite (), lrat_chain);
-        }
-        learn_congruence_unit (other);
-        // the other literal is handled by propagation (gate + equivalence clauses)
+    // if v < 0, then propagation would have found a conflict over the gate.
+    assert (v >= 0);
+    if (v > 0) {
+      const int other = g->rhs[1];
+      if (internal->val (other))
         return true;
+
+      if (internal->lrat) {
+        produce_lrat_chain_for_rewriting (g->pos_lhs_ids()[idx1].clause,
+          Rewrite (), lrat_chain);
       }
-      if (!v) {
-        if (internal->lrat) {
-          produce_lrat_chain_for_rewriting (g->pos_lhs_ids()[idx1].clause,
-                                           Rewrite (), lrat_chain);
-        }
-        learn_congruence_unit (cond_lit_to_learn_if_degenerated);
-        // the other literal is handled by propagation (gate + equivalence clauses)
-        return true;
-      }
-      assert (v < 0);
-      if (internal->lrat)
-        produce_lrat_chain_for_rewriting (g->pos_lhs_ids()[idx2].clause,
-                                         Rewrite (), lrat_chain);
-      COVER (3);
-      push_lrat_unit (-lit);
-      internal->learn_empty_clause ();
+      learn_congruence_unit (other);
+      // the other literal is handled by propagation (gate + equivalence clauses)
       return true;
+    }
+    assert (!v);
+    if (internal->lrat) {
+      produce_lrat_chain_for_rewriting (g->pos_lhs_ids()[idx1].clause,
+        Rewrite (), lrat_chain);
+    }
+
+    learn_congruence_unit (cond_lit_to_learn_if_degenerated);
+    // the other literal is handled by propagation (gate + equivalence clauses)
+    return true;
   }
   if (src == g->lhs)
     g->lhs = dst;

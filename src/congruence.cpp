@@ -5707,8 +5707,6 @@ bool Closure::rewrite_ite_gate_to_and (
     g->lhs = dst;
   else if (src == -g->lhs)
     g->lhs = -dst;
-  if (!internal->lrat)
-    return false;
   LOG (g, "updating flags for");
 
   if (g->rhs[1] == -g->lhs || g->rhs[0] == -g->lhs)
@@ -5719,37 +5717,41 @@ bool Closure::rewrite_ite_gate_to_and (
     LOG ("degenerated AND gate");
     assert (g->rhs[1] == -g->lhs || g->rhs[0] == -g->lhs);
     if (g->rhs[1] == -g->lhs) {
-      if (g->rhs[0] == -g->lhs) {
-        COVER (7);
-        // -2 := ITE 1 2 2: we need
-        // we need 2 3
-        LitClausePair &p1 = g->pos_lhs_ids()[2];
-        LitClausePair &p2 = g->pos_lhs_ids()[3];
-        p1.clause = rewrite_clause (p1.clause);
-        p2.clause = rewrite_clause (p2.clause);
-        assert (p1.clause);
-        assert (p2.clause);
-        lrat_chain.push_back (p1.clause->id);
-        lrat_chain.push_back (p2.clause->id);
-        // push_id_and_rewriting_lrat_unit (g->pos_lhs_ids()[0].clause,
-        //                                  Rewrite (), lrat_chain);
-      } else {
-        // -1 := ITE -4 1 -1 we need 3
-        // -2 := ITE 1 2 2 we need 2
-        LOG ("g->rhs[0] != -g->lhs");
-        int *grhs = g->rhs;
-        const int idx = (g->lhs == grhs[2]) ? 3 : 2;
-        produce_lrat_chain_for_rewriting (g->pos_lhs_ids()[idx].clause,
-                                         Rewrite (), lrat_chain);
+      if (internal->lrat) {
+        if (g->rhs[0] == -g->lhs) {
+          COVER (7);
+          // -2 := ITE 1 2 2: we need
+          // we need 2 3
+          LitClausePair &p1 = g->pos_lhs_ids()[2];
+          LitClausePair &p2 = g->pos_lhs_ids()[3];
+          p1.clause = rewrite_clause (p1.clause);
+          p2.clause = rewrite_clause (p2.clause);
+          assert (p1.clause);
+          assert (p2.clause);
+          lrat_chain.push_back (p1.clause->id);
+          lrat_chain.push_back (p2.clause->id);
+          // push_id_and_rewriting_lrat_unit (g->pos_lhs_ids()[0].clause,
+          //                                  Rewrite (), lrat_chain);
+        } else {
+          // -1 := ITE -4 1 -1 we need 3
+          // -2 := ITE 1 2 2 we need 2
+          LOG ("g->rhs[0] != -g->lhs");
+          int *grhs = g->rhs;
+          const int idx = (g->lhs == grhs[2]) ? 3 : 2;
+          produce_lrat_chain_for_rewriting (g->pos_lhs_ids()[idx].clause,
+                                          Rewrite (), lrat_chain);
+        }
       }
       learn_congruence_unit (-g->lhs);
       return true;
     }
     if (g->rhs[0] == -g->lhs) {
       LOG ("g->rhs[0] == -g->lhs");
-      Clause *c =
+      if (internal->lrat) {
+        Clause *c =
           g->lhs > 0 ? g->pos_lhs_ids()[1].clause : g->pos_lhs_ids()[0].clause;
-      produce_lrat_chain_for_rewriting (c, Rewrite (), lrat_chain);
+        produce_lrat_chain_for_rewriting (c, Rewrite (), lrat_chain);
+      }
       learn_congruence_unit (-g->lhs);
       return true;
     }
@@ -5757,6 +5759,8 @@ bool Closure::rewrite_ite_gate_to_and (
   if (g->rhs[0] == g->lhs || g->rhs[1] == g->lhs)
     g->degenerated_gate = Special_Gate::DEGENERATED_AND;
 
+  if (!internal->lrat)
+    return false;
   assert (g->arity () == 3);
   assert (g->pos_lhs_ids().size () == 4);
   assert (idx1 < g->pos_lhs_ids().size ());

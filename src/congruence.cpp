@@ -1311,7 +1311,7 @@ void Closure::learn_congruence_unit_falsifies_lrat_chain (
   assert (lrat_chain.empty ());
   std::vector<LRAT_ID> proof_chain;
   assert (g->tag == Gate_Type::And_Gate);
-  COVER (!clashing && !falsified);
+  assert (clashing || falsified);
   if (clashing) {
     LOG ("clashing %d where -lhs=%d", clashing, -g->lhs);
     // Example: -2 = 1&3 and 3=2
@@ -1379,7 +1379,8 @@ void Closure::learn_congruence_unit_falsifies_lrat_chain (
       }
     }
     LOG (proof_chain, "produced lrat chain");
-  } else if (falsified) {
+  } else {
+    assert (falsified);
     LOG ("falsifies %d", falsified);
     // Example is 3=(1&2) with 2=false or 3=(1&4) with 4=2 and 2=false
     // (can happen when the unit was derived in the middle of the
@@ -1396,19 +1397,8 @@ void Closure::learn_congruence_unit_falsifies_lrat_chain (
                                          -dst, -g->lhs);
       }
     }
-  } else {
-    assert (unit);
-    COVER (g->neg_lhs_id () ());
-    COVER (!g->neg_lhs_id () ());
-    // Example is 1 = 2&3 where 2 and 3 are false
-    if (g->neg_lhs_id () ()) {
-      produce_lrat_chain_for_rewriting (g->neg_lhs_id ().content.clause,
-                                       Rewrite (), proof_chain);
-    }
-    LOG (proof_chain, "produced lrat chain");
   }
   lrat_chain = std::move (proof_chain);
-  (void) unit;
 }
 
 bool Closure::fully_propagate () {

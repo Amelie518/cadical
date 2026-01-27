@@ -1389,9 +1389,7 @@ void Closure::learn_congruence_unit_falsifies_lrat_chain (
       LOG (litId.clause,
            "found lrat in gate %d from %" PRId64 " (looking for %d)",
            litId.current_lit, litId.clause->id, falsified);
-      COVER (litId.current_lit == src && dst == falsified);
-      if (litId.current_lit == falsified ||
-          (litId.current_lit == src && dst == falsified)) {
+      if (litId.current_lit == falsified) {
         produce_lrat_chain_for_rewriting (litId.clause, Rewrite (),
                                          proof_chain, true, Rewrite (),
                                          -dst, -g->lhs);

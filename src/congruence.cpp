@@ -1883,7 +1883,7 @@ inline void Closure::promote_clause (Clause *c) {
 // therefore you actually need to learn the clauses 2->3->4 and -2->1 and
 // vice-versa
 // TODO covered
-bool Closure::merge_literals (int lit, int other, Clause *c1,
+bool Closure::merge_literals_from_clauses (int lit, int other, Clause *c1,
                                           Clause *c2) {
   assert (!internal->unsat);
   LRAT_ID id1 = c1 ? c1->id : 0;
@@ -1911,57 +1911,8 @@ bool Closure::merge_literals (int lit, int other, Clause *c1,
     LOG ("already merged %d and %d", lit, other);
     return false;
   }
-  const int val_lit = internal->val (lit);
-  const int val_other = internal->val (other);
-
-  if (val_lit) {
-    COVER (!val_other);
-    if (val_lit == val_other) {
-      COVER (true);
-      LOG ("not merging lits %d and %d assigned to same value", lit, other);
-      return false;
-    }
-    if (val_lit == -val_other) {
-      COVER (true);
-      if (internal->lrat)
-        lrat_chain.push_back (internal->unit_id (lit)),
-            lrat_chain.push_back (internal->unit_id (other));
-      LOG ("merging lits %d and %d assigned to inconsistent value", lit,
-           other);
-      internal->learn_empty_clause ();
-      return false;
-    }
-
-    assert (!val_other);
-    LOG ("merging assigned %d and unassigned %d", lit, other);
-    const int unit = (val_lit < 0) ? -other : other;
-      if (internal->lrat) {
-        lrat_chain.push_back (internal->unit_id (unit));
-      if (val_lit < 0)
-        lrat_chain.push_back (id2);
-      else
-        lrat_chain.push_back (id1);
-    }
-    learn_congruence_unit (unit);
-    return false;
-  }
-
-  if (!val_lit && val_other) {
-    LOG ("merging assigned %d and unassigned %d", other, lit);
-    COVER (val_other < 0);
-    COVER (val_other > 0);
-    const int unit = (val_other < 0) ? -lit : lit;
-    if (internal->lrat) {
-      lrat_chain.push_back (
-          internal->unit_id (val_other < 0 ? -other : other));
-      if (val_lit < 0)
-        lrat_chain.push_back (id1);
-      else
-        lrat_chain.push_back (id2);
-    }
-    learn_congruence_unit (unit);
-    return false;
-  }
+  assert (!internal->val (lit));
+  assert (!internal->val (other));
 
   int smaller_repr = repr_lit;
   int larger_repr = repr_other;
@@ -4547,7 +4498,7 @@ void Closure::find_equivalences () {
           promote_clause (w.clause);
           LOG (w.clause, "merging");
           LOG (marked_mu1 (-other).clause, "with");
-          if (merge_literals (
+          if (merge_literals_from_clauses (
                   lit, other,
                   internal->lrat ? marked_mu1 (-other).clause : nullptr,
                   w.clause)) {
@@ -5583,7 +5534,7 @@ bool Closure::rewrite_ite_gate_to_xor (Gate *g) {
         maybe_add_binary_clause (-g->lhs, g->rhs[0]);
         maybe_add_binary_clause (g->lhs, -g->rhs[0]);
       }
-      merge_literals (g->lhs, g->rhs[0], c1, c2);
+      merge_literals_from_clauses (g->lhs, g->rhs[0], c1, c2);
       garbage = true;
     } else if (internal->lrat){
       rewrite_clauses_and_clean (g->pos_lhs_ids (), g->lhs,

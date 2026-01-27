@@ -633,7 +633,12 @@ struct Closure {
   // (by combining it with the rewrite).  In DRAT this is less important
   // because the checker finds a chain and is less restricted than our LRAT
   // chain.
-  bool merge_literals (int lit, int other, Clause *c1,
+
+  // Merges the two literals based on the clauses, assuming that c1 and c2 are
+  // the two clauses and assuming the two literals have not been set (because
+  // propagation can be done exaustively on binary clauses, so either both
+  // already have a value or none).
+  bool merge_literals_from_clauses (int lit, int other, Clause *c1,
                                    Clause *c2);
   bool merge_literals (Gate *g, Gate *h, int lit, int other,
                        const std::vector<LRAT_ID> & = {},

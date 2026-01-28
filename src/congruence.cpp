@@ -6617,8 +6617,6 @@ bool Closure::simplify_ite_gate_to_and (Gate *g, size_t idx1, size_t idx2,
   const int second_lit = g->rhs[1];
   for (auto &litId : g->pos_lhs_ids()) {
     assert (litId.clause);
-    LOG (litId.clause, "%s ->", LOGLIT (litId.current_lit));
-    COVER ((litId.current_lit == removed_lit));
     if (internal->val (litId.current_lit)) {
       assert (litId.clause->size == 2);
       int replacement_lit = 0;
@@ -6634,10 +6632,9 @@ bool Closure::simplify_ite_gate_to_and (Gate *g, size_t idx1, size_t idx2,
       assert (replacement_lit);
 
       litId.current_lit = replacement_lit;
-    } else if (litId.current_lit == removed_lit)
-      litId.current_lit = -g->rhs[0];
-    else if (litId.current_lit == -removed_lit)
+    } else if (litId.current_lit == -removed_lit)
       litId.current_lit = g->rhs[0];
+    else assert (litId.current_lit == removed_lit);
     LOG (litId.clause, "%d ->", litId.current_lit);
     assert (std::find (begin (*g), end (*g), litId.current_lit) !=
             end (*g));

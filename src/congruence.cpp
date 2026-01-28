@@ -2279,10 +2279,12 @@ void Closure::update_and_gate_unit_build_lrat_chain (
   LOG (extra_reasons_lit, "lrat chain for positive side");
 }
 
-void Closure::update_and_gate_build_lrat_chain (
+void Closure::produce_lrat_for_and_merge (
     Gate *g, Gate *h, std::vector<LRAT_ID> &extra_reasons_lit,
     std::vector<LRAT_ID> &extra_reasons_ulit, bool remove_units) {
   assert (g != h);
+  assert (g->tag == Gate_Type::And_Gate);
+  assert (h->tag == Gate_Type::And_Gate);
   LOG (g, "merging");
   LOG (h, "with");
   // If the LHS are identical, do not even attempt to build the LRAT chain
@@ -2596,7 +2598,7 @@ void Closure::update_and_gate (Gate *g, GatesTable::iterator it, int src,
       std::vector<LRAT_ID> extra_reasons_lit2;
       std::vector<LRAT_ID> extra_reasons_ulit2;
       if (internal->lrat)
-        update_and_gate_build_lrat_chain (g, h, extra_reasons_lit2,
+        produce_lrat_for_and_merge (g, h, extra_reasons_lit2,
                                           extra_reasons_ulit2);
       if (merge_literals (g, h, g->lhs, h->lhs, extra_reasons_lit2,
                           extra_reasons_ulit2))
@@ -2685,7 +2687,7 @@ void Closure::update_xor_gate (Gate *g, GatesTable::iterator git) {
     if (h) {
       assert (garbage);
       std::vector<LRAT_ID> reasons_implication, reasons_back;
-      add_xor_matching_proof_chain (g, g->lhs, h->lrat_reasons ? h->pos_lhs_ids() : std::vector<LitClausePair>(), h->lhs,
+      produce_lrat_chain_for_xor_merge (g, g->lhs, h->lrat_reasons ? h->pos_lhs_ids() : std::vector<LitClausePair>(), h->lhs,
                                     reasons_implication, reasons_back);
       if (merge_literals (g, h, g->lhs, h->lhs, reasons_implication,
                           reasons_back)) {
@@ -2989,7 +2991,7 @@ Gate *Closure::new_and_gate (Clause *base_clause, int lhs) {
   if (h) {
     std::vector<LRAT_ID> reasons_lrat_src, reasons_lrat_usrc;
     if (internal->lrat)
-      merge_and_gate_lrat_produce_lrat (g, h, reasons_lrat_src,
+      produce_lrat_for_and_merge (g, h, reasons_lrat_src,
                                         reasons_lrat_usrc);
     if (merge_literals (g, h, lhs, h->lhs, reasons_lrat_src,
                         reasons_lrat_usrc)) {
@@ -3857,7 +3859,7 @@ void Closure::simplify_and_sort_xor_lrat_clauses (
 }
 
 // covered
-void Closure::add_xor_matching_proof_chain (
+void Closure::produce_lrat_chain_for_xor_merge (
     Gate *g, int lhs1, const vector<LitClausePair> &clauses2, int lhs2,
     vector<LRAT_ID> &to_lrat, vector<LRAT_ID> &back_lrat) {
   if (!internal->proof)
@@ -3985,7 +3987,7 @@ Gate *Closure::new_xor_gate (const vector<LitClausePair> &glauses,
   if (g) {
     check_xor_gate_implied (g);
     std::vector<LRAT_ID> reasons_implication, reasons_back;
-    add_xor_matching_proof_chain (g, g->lhs, glauses, lhs,
+    produce_lrat_chain_for_xor_merge (g, g->lhs, glauses, lhs,
                                   reasons_implication, reasons_back);
     if (merge_literals (g->lhs, lhs, reasons_implication, reasons_back)) {
       ++internal->stats.congruence.xors;
@@ -5295,8 +5297,6 @@ void Closure::produce_ite_merge_then_else_reasons (
     Gate *g, int src, int dst, std::vector<LRAT_ID> &reasons_implication,
     std::vector<LRAT_ID> &reasons_back) {
   assert (!g->garbage);
-  if (!internal->lrat)
-    return;
   check_correct_ite_flags (g);
   //obfuscating because flexible array members.
   int *grhs = g->rhs;
@@ -5414,7 +5414,6 @@ bool Closure::rewrite_ite_gate_else_to_not_then (Gate *g, int cond, int then_lit
   return garbage;
 }
 
-// covered
 void Closure::rewrite_ite_gate_update_lrat_reasons (Gate *g, int src,
                                                     int dst) {
   if (!internal->lrat)
@@ -6079,7 +6078,7 @@ bool Closure::rewrite_ite_gate_to_xor_or_and (Gate *g, Gate_Type new_tag,
         garbage = true;
         if (new_tag == Gate_Type::XOr_Gate) {
           std::vector<LRAT_ID> reasons_implication, reasons_back;
-          add_xor_matching_proof_chain (
+          produce_lrat_chain_for_xor_merge (
               g, g->lhs,
               h->lrat_reasons ? h->pos_lhs_ids ()
                               : std::vector<LitClausePair> (),
@@ -6093,7 +6092,7 @@ bool Closure::rewrite_ite_gate_to_xor_or_and (Gate *g, Gate_Type new_tag,
           assert (internal->val (g->rhs[0]) >= 0);
           std::vector<LRAT_ID> reasons_implication, reasons_back;
           if (internal->lrat)
-            merge_and_gate_lrat_produce_lrat (g, h, reasons_implication,
+            produce_lrat_for_and_merge (g, h, reasons_implication,
                                               reasons_back, false);
           if (merge_literals (g, h, g->lhs, h->lhs, reasons_implication,
                               reasons_back))
@@ -6239,7 +6238,8 @@ void Closure::rewrite_ite_gate (Gate *g, int dst, int src) {
       // cond ? else_lit : else_lit
       // else_lit
       std::vector<LRAT_ID> reasons_implication, reasons_back;
-      produce_ite_merge_then_else_reasons (g, src, dst, reasons_implication,
+      if (!internal->lrat)
+        produce_ite_merge_then_else_reasons (g, src, dst, reasons_implication,
                                            reasons_back);
       if (merge_literals (g->lhs, else_lit, reasons_implication,
                           reasons_back)) {
@@ -6397,7 +6397,6 @@ void Closure::rewrite_ite_gate (Gate *g, int dst, int src) {
   ++internal->stats.congruence.rewritten_ites;
 }
 
-// covered
 void Closure::simplify_ite_gate_produce_unit_lrat (Gate *g, int lit,
                                                    size_t idx1,
                                                    size_t idx2) {
@@ -6450,20 +6449,7 @@ void Closure::simplify_ite_gate_produce_unit_lrat (Gate *g, int lit,
   lrat_chain.push_back (d->id);
 }
 
-// TODO merge
-// covered
-void Closure::merge_and_gate_lrat_produce_lrat (
-    Gate *g, Gate *h, std::vector<LRAT_ID> &reasons_lrat_src,
-    std::vector<LRAT_ID> &reasons_lrat_usrc, bool remove_units) {
-  assert (internal->lrat);
-  assert (g->tag == Gate_Type::And_Gate);
-  assert (h->tag == Gate_Type::And_Gate);
-  update_and_gate_build_lrat_chain (g, h, reasons_lrat_src,
-                                    reasons_lrat_usrc, remove_units);
-}
-
 // odd copy of rewrite_ite_gate_lrat_and
-// covered
 bool Closure::simplify_ite_gate_to_and (Gate *g, size_t idx1, size_t idx2,
                                         int removed_lit) {
   assert (internal->lrat_chain.empty ());
@@ -6648,7 +6634,7 @@ bool Closure::simplify_ite_gate_to_and (Gate *g, size_t idx1, size_t idx2,
 
 
 // covered
-void Closure::merge_ite_gate_same_then_else_lrat (
+void Closure::produce_lrat_for_ite_merge_same_te_lrat (
     std::vector<LitClausePair> &clauses,
     std::vector<LRAT_ID> &reasons_implication,
     std::vector<LRAT_ID> &reasons_back) {
@@ -7213,7 +7199,7 @@ Gate *Closure::new_ite_gate (int lhs, int cond, int then_lit, int else_lit,
          (then_lit), (else_lit));
     std::vector<LRAT_ID> reasons_implication, reasons_back;
     if (internal->lrat) {
-      merge_ite_gate_same_then_else_lrat (clauses, reasons_implication,
+      produce_lrat_for_ite_merge_same_te_lrat (clauses, reasons_implication,
                                           reasons_back);
     }
     if (merge_literals (lhs, then_lit, reasons_implication, reasons_back))

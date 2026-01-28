@@ -678,7 +678,7 @@ struct Closure {
                          const my_dummy_optional &c);
   // TODO: does nothing except pushing on the stack, remove!
   void push_id_on_chain (std::vector<LRAT_ID> &chain, Rewrite rewrite, int);
-  void update_and_gate_build_lrat_chain (
+  void produce_lrat_for_and_merge (
       Gate *g, Gate *h, std::vector<LRAT_ID> &extra_reasons_lit,
       std::vector<LRAT_ID> &extra_reasons_ulit, bool remove_units = true);
   void update_and_gate_unit_build_lrat_chain (
@@ -765,7 +765,7 @@ struct Closure {
   void reset_xor_gate_extraction ();
   void init_xor_gate_extraction (std::vector<Clause *> &candidates);
   LRAT_ID check_and_add_to_proof_chain (vector<int> &clause);
-  void add_xor_matching_proof_chain (Gate *g, int lhs1,
+  void produce_lrat_chain_for_xor_merge (Gate *g, int lhs1,
                                      const vector<LitClausePair> &,
                                      int lhs2, vector<LRAT_ID> &,
                                      vector<LRAT_ID> &);
@@ -978,14 +978,12 @@ struct Closure {
   void rewrite_ite_gate_update_lrat_reasons (Gate *g, int src, int dst);
   void simplify_ite_gate_produce_unit_lrat (Gate *g, int lit, size_t idx1,
                                             size_t idx2);
-  void merge_and_gate_lrat_produce_lrat (
-      Gate *g, Gate *h, std::vector<LRAT_ID> &reasons_lrat,
-      std::vector<LRAT_ID> &reasons_lrat_back, bool remove_units = true);
+
   // first index is a binary clause after unit propagation and the second
   // has length 3
   bool simplify_ite_gate_to_and (Gate *g, size_t idx1, size_t idx2,
                                  int removed);
-  void merge_ite_gate_same_then_else_lrat (
+  void produce_lrat_for_ite_merge_same_te_lrat (
       std::vector<LitClausePair> &clauses,
       std::vector<LRAT_ID> &reasons_implication,
       std::vector<LRAT_ID> &reasons_back);

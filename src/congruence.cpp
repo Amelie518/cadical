@@ -6442,18 +6442,12 @@ void Closure::simplify_ite_gate_produce_unit_lrat (Gate *g, int lit,
     return;
   }
 
+  // The clauses exists now
   c = rewrite_clause (c, g->lhs, true);
-  if (c) {
-    lrat_chain.push_back (c->id);
-    d = rewrite_clause (d, g->lhs, true);
-    if (d)
-      lrat_chain.push_back (d->id);
-  } else if (!c) {
-    produce_lrat_chain_for_rewriting (d, Rewrite (), lrat_chain, true,
-                                     Rewrite (), g->lhs);
-    assert (d);
-    lrat_chain.push_back (d->id);
-  }
+  assert (c);
+  lrat_chain.push_back (c->id);
+  d = rewrite_clause (d, g->lhs, true);
+  lrat_chain.push_back (d->id);
 }
 
 // TODO merge

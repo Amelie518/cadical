@@ -3477,6 +3477,8 @@ bool parity_lits (const vector<int> &lits) {
   return res;
 }
 
+// Increments a vector of literals, whose signs are seen as a binary number.
+// This is useful for XOR gates.
 void inc_lits (vector<int> &lits) {
   bool carry = true;
   for (size_t i = 0; i < lits.size () && carry; ++i) {

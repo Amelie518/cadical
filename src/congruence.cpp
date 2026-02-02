@@ -2428,12 +2428,12 @@ void Closure::produce_lrat_for_and_merge (
         assert (litId.clause);
         extra_reasons_other.push_back (litId.clause->id);
       }
-      tauto->pos_lhs_ids().erase (
-          std::remove_if (
-              begin (tauto->pos_lhs_ids()), end (tauto->pos_lhs_ids()),
-              [] (const LitClausePair &p) { return !p.clause; }),
-          end (tauto->pos_lhs_ids()));
     }
+    tauto->pos_lhs_ids().erase (
+      std::remove_if (
+        begin (tauto->pos_lhs_ids()), end (tauto->pos_lhs_ids()),
+        [] (const LitClausePair &p) { return !p.clause; }),
+      end (tauto->pos_lhs_ids()));
     assert (!extra_reasons_other.empty ());
     rewrite_clauses_and_clean (other->neg_lhs_id (), other->lhs,
                                              remove_units);

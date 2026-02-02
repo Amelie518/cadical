@@ -468,7 +468,7 @@ Solver::~Solver () {
 
 /*------------------------------------------------------------------------*/
 
-int Solver::vars () {
+int Solver::vars () const {
   TRACE ("vars");
   REQUIRE_VALID_OR_SOLVING_STATE ();
   int res = external->max_var;
@@ -1779,6 +1779,7 @@ void Solver::copy (Solver &other) const {
   REQUIRE_READY_STATE ();
   REQUIRE (other.state () & CONFIGURING, "target solver already modified");
   internal->opts.copy (other.internal->opts);
+  other.resize(vars ());
   ClauseCopier clause_copier (other);
   traverse_clauses (clause_copier);
   WitnessCopier witness_copier (other.external);

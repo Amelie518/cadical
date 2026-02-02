@@ -602,7 +602,7 @@ public:
   //   require (VALID | SOLVING)
   //   ensure (VALID | SOLVING)
   //
-  int vars ();
+  int vars () const;
 
   // Increase the maximum variable index explicitly.  This function makes
   // sure that at least 'min_max_var' variables are initialized.  Since it

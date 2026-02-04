@@ -1400,7 +1400,10 @@ bool Internal::run_factorization (int64_t limit) {
       int reduction = 0;
       // This is the best and-gate factor (classical BVA).
       Quotient *q = best_quotient (factoring, &reduction);
-      if (opts.factorxor && opts.factorsize > 2) {
+      // only try xor/ite factoring once per variable
+      // (as opposed to once per literal)
+      if (opts.factorxor && opts.factorsize > 2 &&
+          !(f.factor & (1u << (first > 0)))) {
         // Get an xor quotient which is better then the best
         // classical quotient (or 0).
         int xorite_reduction = 0;

@@ -23,7 +23,6 @@ struct Stats {
     int64_t cover = 0;       // propagated during covered clause elimination
     int64_t instantiate = 0; // propagated during variable instantiation
     int64_t probe = 0;       // propagated during probing
-    int64_t refactor = 0;    // propagated during refactor
     int64_t search = 0;      // propagated literals during search
     int64_t transred = 0;    // propagated during transitive reduction
     int64_t vivify = 0;      // propagated during vivification
@@ -35,7 +34,6 @@ struct Stats {
     int64_t backbone = 0;
     int64_t factor = 0;
     int64_t probe = 0;
-    int64_t refactor = 0;
     int64_t sweep = 0;
     int64_t ternary = 0;
     int64_t vivify = 0;
@@ -173,19 +171,21 @@ struct Stats {
   int64_t reduced = 0;      // number of reduced clauses
   int64_t reduced_sqrt = 0;
   int64_t reduced_prct = 0;
-  int64_t collected = 0;      // number of collected bytes
-  int64_t collections = 0;    // number of garbage collections
-  int64_t hbrs = 0;           // hyper binary resolvents
-  int64_t hbrsizes = 0;       // sum of hyper resolved base clauses
-  int64_t hbreds = 0;         // redundant hyper binary resolvents
-  int64_t hbrsubs = 0;        // subsuming hyper binary resolvents
-  int64_t instried = 0;       // number of tried instantiations
-  int64_t instantiated = 0;   // number of successful instantiations
-  int64_t instrounds = 0;     // number of instantiation rounds
-  int64_t subsumed = 0;       // number of subsumed clauses
-  int64_t deduplicated = 0;   // number of removed duplicated binary clauses
-  int64_t deduplicatedinit = 0;// number of removed binary clauses initially
-  int64_t deduplicatedinitrounds = 0;// number of removed binary clauses initially
+  int64_t collected = 0;    // number of collected bytes
+  int64_t collections = 0;  // number of garbage collections
+  int64_t hbrs = 0;         // hyper binary resolvents
+  int64_t hbrsizes = 0;     // sum of hyper resolved base clauses
+  int64_t hbreds = 0;       // redundant hyper binary resolvents
+  int64_t hbrsubs = 0;      // subsuming hyper binary resolvents
+  int64_t instried = 0;     // number of tried instantiations
+  int64_t instantiated = 0; // number of successful instantiations
+  int64_t instrounds = 0;   // number of instantiation rounds
+  int64_t subsumed = 0;     // number of subsumed clauses
+  int64_t deduplicated = 0; // number of removed duplicated binary clauses
+  int64_t deduplicatedinit =
+      0; // number of removed binary clauses initially
+  int64_t deduplicatedinitrounds =
+      0;                      // number of removed binary clauses initially
   int64_t deduplications = 0; // number of deduplication phases
   int64_t strengthened = 0;   // number of strengthened clauses
 
@@ -215,14 +215,6 @@ struct Stats {
   int64_t clauses_unfactored = 0;
   int64_t clauses_unfactored_redundant = 0;
   int64_t literals_unfactored = 0;
-
-  int64_t refactor = 0;
-  int64_t refactorunits = 0;
-  int64_t refactorstrs = 0;
-  int64_t refactordecs = 0;
-  int64_t refactorsched = 0;
-  int64_t refactorchecks = 0;
-  int64_t refactorsuccs = 0;
 
   int64_t elimotfstr =
       0; // number of on-the-fly strengthened during elimination

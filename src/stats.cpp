@@ -449,19 +449,6 @@ void Stats::print (Internal *internal) {
     PRT ("  collections:   %15" PRId64 "   %10.2f    interval",
          stats.collections, relative (stats.conflicts, stats.collections));
   }
-  if (all || stats.refactor) {
-    PRT ("refactored:      %15" PRId64 "   %10.2f    per refactor",
-         stats.refactorsuccs,
-         relative (stats.refactorsuccs, stats.refactor));
-    PRT ("  refactor:      %15" PRId64 "   %10.2f    conflict interval",
-         stats.refactor, relative (stats.conflicts, stats.refactor));
-    PRT ("  scheduled:     %15" PRId64 "   %10.2f    per refactor",
-         stats.refactorsched,
-         relative (stats.refactorsched, stats.refactor));
-    PRT ("  checks:        %15" PRId64 "   %10.2f    per scheduled",
-         stats.refactorchecks,
-         relative (stats.refactorchecks, stats.refactorsched));
-  }
   if (all || stats.rephased.total) {
     PRT ("rephased:        %15" PRId64 "   %10.2f    interval",
          stats.rephased.total,

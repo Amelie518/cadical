@@ -86,7 +86,6 @@ struct Internal;
   MROFILE (propstable, 4) \
   MROFILE (propunstable, 4) \
   PROFILE (reduce, 3) \
-  PROFILE (refactor, 2) \
   PROFILE (restart, 3) \
   PROFILE (restore, 2) \
   PROFILE (search, 1) \

@@ -90,7 +90,6 @@ extern "C" {
 #include "random.hpp"
 #include "range.hpp"
 #include "reap.hpp"
-#include "refactor.hpp"
 #include "reluctant.hpp"
 #include "resources.hpp"
 #include "score.hpp"
@@ -149,16 +148,15 @@ struct Internal {
     FACTOR = (1 << 7),
     LUCKY = (1 << 8),
     PROBE = (1 << 9),
-    REFACTOR = (1 << 10),
-    SEARCH = (1 << 11),
-    SIMPLIFY = (1 << 12),
-    SUBSUME = (1 << 13),
-    SWEEP = (1 << 14),
+    SEARCH = (1 << 10),
+    SIMPLIFY = (1 << 11),
+    SUBSUME = (1 << 12),
+    SWEEP = (1 << 13),
     TERNARY = (1 << 14),
-    TRANSRED = (1 << 16),
-    VIVIFY = (1 << 17),
-    WALK = (1 << 18),
-    BACKBONE = (1 << 19),
+    TRANSRED = (1 << 15),
+    VIVIFY = (1 << 16),
+    WALK = (1 << 17),
+    BACKBONE = (1 << 18),
   };
 
   bool in_mode (Mode m) const { return (mode & m) != 0; }
@@ -1352,19 +1350,6 @@ struct Internal {
   int get_new_extension_variable ();
   Clause *new_factor_clause (int);
   void adjust_scores_and_phases_of_fresh_variables (Factoring &);
-
-  // refactor
-  //
-  void refactor_initialize (Refactoring &vivifier, int64_t &ticks);
-  void refactor_chain_for_units (int lit, Clause *reason);
-  void refactor_assign (int lit, Clause *);
-  void refactor_assume (int lit);
-  bool refactor_propagate (int64_t &);
-  bool refactor_clause (Refactoring &, refactor_candidate);
-  void refactor_analyze (Clause *start, int);
-  void refactor_shrink_candidate (refactor_candidate, refactor_gate);
-  void refactor_round (Refactoring &, int64_t delta);
-  bool refactor ();
 
   // instantiate
   //

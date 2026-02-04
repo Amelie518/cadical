@@ -82,14 +82,14 @@ void Internal::update_target_and_best () {
 // backtrack to the given level (by default 0), updating the target and the best
 // level if required. The function also handles out-of-order literals correcty
 // by reassigning them (but you do have to repropagate afterwards!)
-// 
+//
 // For inprocessing use the version that does not update the phases.
 void Internal::backtrack (int new_level) {
   assert (new_level <= level);
   if (new_level == level)
     return;
 
-  //update_target_and_best ();
+  update_target_and_best ();
   backtrack_without_updating_phases (new_level);
 }
 

@@ -89,7 +89,7 @@ void Internal::factor_mode (bool redundant_only) {
     return;
 
   // iterate counts of larger clauses rounds often.
-  // longer clauses can always be useful with xors.
+  // longer clauses can always be useful with XORs.
   const unsigned rounds = opts.factorcandrounds;
   unsigned candidates_before = 0;
   for (unsigned round = 1; !opts.factorxor && round <= rounds; round++) {
@@ -259,8 +259,8 @@ Quotient *Internal::xorite_quotient (Factoring &factoring, int first_factor,
                                      int *reduction_ptr) {
   LOG ("xorite for %d", first_factor);
   // fast skip if the maximum number of matched clauses is to low
-  // factoring.bound is at least -2
-  const size_t min_match_limit = 4 + factoring.bound;
+  // factoring.bound is at least -1
+  const size_t min_match_limit = 5 + factoring.bound;
   if (occs (first_factor).size () < min_match_limit ||
       occs (-first_factor).size () < min_match_limit)
     return 0;
@@ -918,9 +918,9 @@ void Internal::add_factored_quotient (Quotient *q, int not_fresh) {
   }
 }
 
-// this adds first the ite definition (fresh = if factor then second else
+// this adds first the ITE definition (fresh = if factor then second else
 // third) and then for each pair in qlauses the resulting unfactored clause.
-// xor is just the special case where second = -third.
+// XOR is just the special case where second = -third.
 void Internal::add_factor_xorite (Quotient *q, int fresh) {
   const int factor = q->factor;
   const int second = q->second;
@@ -1146,7 +1146,7 @@ bool Internal::apply_factoring (Factoring &factoring, Quotient *q) {
   return true;
 }
 
-// xor factoring.
+// XOR factoring.
 bool Internal::apply_xorite_factoring (Factoring &factoring, Quotient *q) {
   const int fresh = get_new_extension_variable ();
   if (!fresh)
@@ -1384,7 +1384,7 @@ bool Internal::run_factorization (int64_t limit) {
       continue;
     f.factor &= ~bit;
     const size_t first_count = first_factor (factoring, first);
-    // extract xor matches after the "normal" factors in this loop.
+    // extract XOR matches after the "normal" factors in this loop.
     if (first_count > 1) {
       for (;;) {
         unsigned next_count;
@@ -1398,27 +1398,27 @@ bool Internal::run_factorization (int64_t limit) {
       }
       // only initialize to remove non-initialized warning later.
       int reduction = 0;
-      // This is the best and-gate factor (classical BVA).
+      // This is the best AND-gate factor (classical BVA).
       Quotient *q = best_quotient (factoring, &reduction);
-      // only try xor/ite factoring once per variable
+      // only try XOR/ITE factoring once per variable
       // (as opposed to once per literal)
       if (opts.factorxor && opts.factorsize > 2 &&
           !(f.factor & (1u << (first > 0)))) {
-        // Get an xor quotient which is better then the best
+        // Get an XOR quotient which is better then the best
         // classical quotient (or 0).
         int xorite_reduction = 0;
         Quotient *p = xorite_quotient (factoring, first, &xorite_reduction);
         LOG ("best xorite quotient with %d reduction in clauses",
              xorite_reduction);
         // need 4 clauses for xor or ite definition.
-        // prefer xor over and gates.
+        // prefer XOR over AND gates.
         if (p && xorite_reduction >= reduction) {
           q = p;
           reduction = xorite_reduction;
         }
       }
       if (q && reduction > factoring.bound) {
-        // q->second tells us wether we are doing xor or and factors.
+        // q->second tells us wether we are doing XOR or AND factors.
         if (!q->second && apply_factoring (factoring, q)) {
 #ifndef QUIET
           factored++;

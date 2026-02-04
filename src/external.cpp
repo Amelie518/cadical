@@ -84,7 +84,9 @@ void External::resize (int new_max_var) {
   }
   assert (internal->i2e.size () == (size_t)internal->max_var + 1);
   assert (eidx == (size_t) new_max_var + 1);
+  int new_vars = new_max_var - max_var;
   max_var = new_max_var;
+  internal->stats.variables_original += new_vars;
 }
 
 void External::init (int new_max_var, bool extension) {

@@ -607,6 +607,7 @@ void Walker_DDFW::break_clauses (int lit) {
 }
 
 void Walker_DDFW::walk_ddfw_flip_lit (int lit) {
+  START (walkflip);
   internal->require_mode (internal->WALK);
   LOG ("flipping assign %d", lit);
   assert (internal->val (lit) < 0);
@@ -626,6 +627,7 @@ void Walker_DDFW::walk_ddfw_flip_lit (int lit) {
   if (!broken.empty ())
     check_all ();
   internal->stats.ticks.walkflip += ticks - old;
+  STOP (walkflip);
 }
 
 /*------------------------------------------------------------------------*/
@@ -650,10 +652,11 @@ size_t Walker_DDFW::maximum_weight_neighbor (Clause *c) {
   return max_clause;
 }
 
-
+// TODO: we really hit the max_rounds limit repitedly on `59-131147.cnf`.
+// Therefore we reduced the limit to a more reasonnable value.
 size_t Walker_DDFW::random_satisfied_big_weight_clause (double w_0) {
   size_t max_clause = Walker_DDFW::invalid_position;
-  int max_rounds = 100000;
+  int max_rounds = 1000;
   bool use_weight_condition = true;
   while (max_clause == Walker_DDFW::invalid_position) {
     size_t pos = random.pick_int(0, weight_clause_info.size ()-1);
@@ -673,12 +676,15 @@ size_t Walker_DDFW::random_satisfied_big_weight_clause (double w_0) {
 }
 
 void Walker_DDFW::transfer_weights () {
+  START(walktransferweights);
   LOG ("transfering weights");
   const double w_0 = 8.0;
   const double cspt = 0.01;   // probability to choose random satisfied clause
   const double c_big = 2.0;   // big weight increase factor
   const double c_small = 1.0; // small weight increase factor
 
+  ticks +=
+      (1 + internal->cache_lines (broken.size (), sizeof (DDFW_Tagged)));
   for (auto c : broken) {
     assert (c.counter_pos < weight_clause_info.size ());
     DDFW_Counter &robber = clause_info (c.counter_pos);
@@ -701,6 +707,7 @@ void Walker_DDFW::transfer_weights () {
     update_unsat_weights (c.counter_pos, weight_difference);
     update_sat_weights (robbed_pos, weight_difference);
   }
+  STOP(walktransferweights);
 }
 
 void Walker_DDFW::update_unsat_weights (size_t pos, double weight_difference) {
@@ -763,6 +770,7 @@ inline void Internal::walk_ddfw_save_minimum (Walker_DDFW &walker) {
 /*------------------------------------------------------------------------*/
 
 std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
+  START (walkwrv);
   int weight_reducing_var = 0;
   double mini_weight_reduction = 0;
 
@@ -776,6 +784,7 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
   if (weight_reducing_var && internal->val (weight_reducing_var) > 0)
     weight_reducing_var = -weight_reducing_var;
 
+  STOP (walkwrv);
   return make_pair (weight_reducing_var, mini_weight_reduction);
 }
 /*------------------------------------------------------------------------*/

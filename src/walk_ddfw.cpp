@@ -773,14 +773,16 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
   START (walkwrv);
   int weight_reducing_var = 0;
   double mini_weight_reduction = 0;
-
+  int loop_iterations = 0;
   for (auto idx : vars_in_broken) {
     double flip_gain = critical_sat_weight (idx) - critical_unsat_weight (idx);
     if (flip_gain < mini_weight_reduction) {
       mini_weight_reduction = flip_gain;
       weight_reducing_var = idx;
+      ++loop_iterations;
     }
   }
+  ticks += internal->cache_lines (vars_in_broken.size (), sizeof (int)) + loop_iterations / 64;
   if (weight_reducing_var && internal->val (weight_reducing_var) > 0)
     weight_reducing_var = -weight_reducing_var;
 

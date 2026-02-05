@@ -917,7 +917,7 @@ void LratChecker::print_stats () {
        stats.original, percent (stats.original, stats.added));
   MSG ("derived:         %15" PRId64 "   %10.2f %%  of all clauses",
        stats.derived, percent (stats.derived, stats.added));
-  MSG ("rat:         %15" PRId64 "   %10.2f %%  of derived clauses",
+  MSG ("rat:             %15" PRId64 "   %10.2f %%  of derived clauses",
        stats.rat, percent (stats.rat, stats.derived));
   MSG ("deleted:         %15" PRId64 "   %10.2f %%  of all clauses",
        stats.deleted, percent (stats.deleted, stats.added));

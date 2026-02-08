@@ -1285,6 +1285,7 @@ void Closure::learn_congruence_unit_when_lhs_set (Gate *g, int src,
                                      Rewrite (src, dst, id1, id2),
                                      lrat_chain);}
   else {
+    COVER (true);
     assert (g->degenerated_gate == Special_Gate::DEGENERATED_AND ||
             g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE);
     assert (g->pos_lhs_ids().size () == 1);
@@ -1401,6 +1402,7 @@ void Closure::learn_congruence_unit_falsifies_lrat_chain (
   }
   lrat_chain = std::move (proof_chain);
 }
+
 
 bool Closure::fully_propagate () {
   if (internal->unsat)
@@ -1551,6 +1553,7 @@ bool Closure::really_merge_literals (
     return false;
   }
   if (repr_lit == repr_other) {
+    COVER (true);
     LOG ("already merged %s and %s", LOGLIT (lit), LOGLIT (other));
     return false;
   }
@@ -1771,9 +1774,8 @@ bool Closure::really_merge_literals (
     }
   }
 
-  if (internal->lrat) {
+  if (internal->lrat)
     lrat_chain.clear ();
-  }
 
   if (smaller_repr != smaller || larger != larger_repr) {
     if (internal->lrat) {
@@ -1870,7 +1872,6 @@ inline void Closure::promote_clause (Clause *c) {
 // cannot add 2=3. You really to connect the representatives directly
 // therefore you actually need to learn the clauses 2->3->4 and -2->1 and
 // vice-versa
-// TODO covered
 bool Closure::merge_literals_from_clauses (int lit, int other, Clause *c1,
                                           Clause *c2) {
   assert (!internal->unsat);
@@ -2224,10 +2225,13 @@ void Closure::update_and_gate_unit_build_lrat_chain (
     // need them anyway
     return;
   }
+
   if (!g->neg_lhs_id () ()) {
+    COVER (true);
 
     if (g->degenerated_gate == Special_Gate::DEGENERATED_AND ||
         g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE) {
+          COVER (true);
       // can happen for 4 = AND 3 4 (degenerated with only the clause -4 3)
       // with a rewriting 4 -> 1 (unchanged clause)
       // and later 1 -> 3 (unchanged clause)
@@ -2278,12 +2282,14 @@ void Closure::produce_lrat_for_and_merge (
   LOG (g, "merging");
   LOG (h, "with");
   // If the LHS are identical, do not even attempt to build the LRAT chain
-  if (find_representative (g->lhs) == find_representative (h->lhs))
+  if (find_representative (g->lhs) == find_representative (h->lhs)) {
     return;
+  }
   // set to same value, don't do anything
   if (internal->val (g->lhs) &&
-      internal->val (g->lhs) == internal->val (h->lhs))
+      internal->val (g->lhs) == internal->val (h->lhs)) {
     return;
+  }
   const bool g_tautology = gate_contains (g, g->lhs);
   const bool h_tautology = gate_contains (h, h->lhs);
 
@@ -2347,6 +2353,7 @@ void Closure::produce_lrat_for_and_merge (
     // if tauto can also be a tautology: neg_lhs_id
     // otherwise the clause is in pos_lhs_ids
     if (!other->neg_lhs_id () ()) {
+      COVER (true);
       // happens also if the tauto also has a negative lhs
       for (auto &litId : other->pos_lhs_ids ()) {
         assert (extra_reasons_ulit.empty ());
@@ -2354,8 +2361,12 @@ void Closure::produce_lrat_for_and_merge (
         LOG (litId.clause, "binary clause to push into the reason");
         litId.clause =
             rewrite_clause (litId.clause, 0, remove_units);
-        if (litId.clause)
+        if (litId.clause) {
           extra_reasons_lit.push_back (litId.clause->id);
+          COVER (true);
+        }
+        else
+          COVER (true);
       }
     } else {
       auto &litId = other->neg_lhs_id ().content;
@@ -2529,6 +2540,7 @@ void Closure::update_and_gate (Gate *g, GatesTable::iterator it, int src,
         g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE) {
       int other = find_eager_representative_and_compress (-unit);
       if (internal->lrat && -unit != other) {
+        COVER (true);
         assert (internal->lrat_chain.empty ());
         internal->lrat_chain.push_back (eager_representative_id (-unit));
         for (auto id : lrat_chain)
@@ -2595,7 +2607,8 @@ void Closure::update_and_gate (Gate *g, GatesTable::iterator it, int src,
         assert (it != table.end ());
         LOG (g, "removing from table");
         (void) table.erase (it);
-      }
+      } else
+        COVER (true);
       LOG (g, "inserting gate into table");
       assert (table.count (g) == 0);
       table.insert (g);
@@ -2727,6 +2740,7 @@ void Closure::simplify_and_gate (Gate *g) {
       falsifies = lit;
       continue;
     }
+
     if (lit == -g->lhs)
       ulhs_in_rhs = true;
     *it++ = lit;
@@ -2743,8 +2757,9 @@ void Closure::simplify_and_gate (Gate *g) {
       g->pos_lhs_ids()[i] = g->pos_lhs_ids()[j];
       if (!g->degenerated_gate &&
           internal->val (g->pos_lhs_ids()[i].current_lit) &&
-          g->pos_lhs_ids()[i].current_lit != falsifies)
+          g->pos_lhs_ids()[i].current_lit != falsifies){
         continue;
+      }
       LOG ("keeping %d [%zu %zu]", g->pos_lhs_ids()[i].current_lit, i, j);
       ++i;
     }
@@ -2772,6 +2787,7 @@ void Closure::simplify_and_gate (Gate *g) {
     if (internal->lrat) {
       for (auto litId : g->pos_lhs_ids()) {
         if (litId.current_lit == g->lhs) {
+          COVER (true);
           rewrite_clause_to_clause_vector (litId.clause, 0);
           break;
         }
@@ -3052,6 +3068,7 @@ Gate *Closure::find_first_and_gate (Clause *base_clause, int lhs) {
   return g;
 }
 
+
 Clause *Closure::maybe_add_binary_clause (int a, int b) {
   assert (internal->clause.empty ());
   assert (internal->lrat_chain.empty ());
@@ -3119,6 +3136,8 @@ void Closure::check_not_tmp_binary_clause (Clause *c) {
   assert (internal->lrat_chain.empty ());
   assert (c);
   assert (c->size == 2);
+  COVER (internal->val (c->literals[0]));
+  COVER (internal->val (c->literals[1]));
   if (internal->val (c->literals[0]) || internal->val (c->literals[1]))
     return;
   assert (std::find (begin (extra_clauses), end (extra_clauses), c) ==
@@ -3150,9 +3169,10 @@ Clause *Closure::add_tmp_binary_clause (int a, int b) {
   assert (internal->lrat_chain.empty ());
   assert (internal->lrat);
   LOG ("learning tmp binary clause %d %d", a, b);
+  // Kissat handles this by returning nullptr, by this is just impossible with
+  // our much stricter LRAT handling.
+  assert (a != -b);
   if (internal->unsat)
-    return nullptr;
-  if (a == -b)
     return nullptr;
   assert (internal->clause.empty ());
   internal->clause.push_back (a);
@@ -3809,7 +3829,6 @@ void Closure::add_ite_turned_and_binary_clauses (Gate *g) {
   unsimplified.clear ();
 }
 
-// covered
 void Closure::simplify_unit_xor_lrat_clauses (
     const vector<LitClausePair> &source, int lhs) {
   assert (internal->lrat);
@@ -3835,7 +3854,6 @@ void Closure::simplify_and_sort_xor_lrat_clauses (
   gate_sort_lrat_reasons (target, lhs, except2, flip);
 }
 
-// covered
 void Closure::produce_lrat_chain_for_xor_merge (
     Gate *g, int lhs1, const vector<LitClausePair> &clauses2, int lhs2,
     vector<LRAT_ID> &to_lrat, vector<LRAT_ID> &back_lrat) {
@@ -4502,7 +4520,6 @@ void Closure::find_equivalences () {
 
 /*------------------------------------------------------------------------*/
 // Initialization
-
 void Closure::rewrite_and_gate (Gate *g, int dst, int src, LRAT_ID id1,
                                 LRAT_ID id2) {
   if (skip_and_gate (g))
@@ -4538,6 +4555,7 @@ void Closure::rewrite_and_gate (Gate *g, int dst, int src, LRAT_ID id1,
     }
     if (lit == src)
       lit = dst;
+    COVER (-lit == g->lhs);
     if (lit == g->lhs)
       g->degenerated_gate = Special_Gate::DEGENERATED_AND;
     if (-lit == g->lhs)
@@ -4565,6 +4583,7 @@ void Closure::rewrite_and_gate (Gate *g, int dst, int src, LRAT_ID id1,
     }
     if (lit == -dst) {
       if (dst_count) {
+        COVER (true);
         assert (!not_dst_count);
         LOG ("clashing literals %d and %d", (dst), (-dst));
         clashing = -dst;
@@ -4790,7 +4809,6 @@ void Closure::rewrite_xor_gate (Gate *g, int dst, int src) {
   ++internal->stats.congruence.rewritten_xors;
 }
 
-// update to produce proofs
 void Closure::simplify_xor_gate (Gate *g) {
   LOG (g, "simplifying");
   if (skip_xor_gate (g))
@@ -4853,8 +4871,9 @@ bool Closure::propagate_units () {
   // units are added during propagation, so reloading instead of storing the size
   while (units != internal->trail.size ()) {
     LOG ("propagating %d over gates", internal->trail[units]);
-    if (!propagate_unit (internal->trail[units++]))
+    if (!propagate_unit (internal->trail[units++])) {
       return false;
+    }
   }
   return true;
 }
@@ -5292,6 +5311,10 @@ void Closure::produce_ite_merge_then_else_reasons (
   if (find_eager_representative (g->lhs) == grhs[1] ||
       find_eager_representative (g->lhs) == grhs[2])
     return;
+  COVER ((grhs[1] == src && g->lhs == dst && grhs[2] == g->lhs));
+  COVER ((grhs[2] == src && g->lhs == dst && grhs[1] == g->lhs));
+  COVER ((grhs[1] == -src && g->lhs == -dst && grhs[2] == g->lhs));
+  COVER ((grhs[2] == -src && g->lhs == -dst && grhs[1] == g->lhs));
   if ((grhs[1] == src && g->lhs == dst && grhs[2] == g->lhs) ||
       (grhs[2] == src && g->lhs == dst && grhs[1] == g->lhs) ||
       (grhs[1] == -src && g->lhs == -dst && grhs[2] == g->lhs) ||
@@ -5300,7 +5323,6 @@ void Closure::produce_ite_merge_then_else_reasons (
   // LHS can change for degenerated gates
   if (g->degenerated_gate != Special_Gate::NORMAL)
     g->lhs = find_eager_representative (g->lhs);
-
   check_ite_lrat_reasons (g);
   assert (g->arity () == 3);
   assert (src == grhs[1] || src == grhs[2]);
@@ -5334,6 +5356,9 @@ void Closure::produce_ite_merge_then_else_reasons (
 bool Closure::rewrite_ite_gate_else_to_not_then (Gate *g, int cond, int then_lit, int lhs) {
   bool garbage = false;
   int not_lhs = -lhs;
+  // not possible since this would be an earlier missed simplificated on the ITE
+  // gate
+  assert (not_lhs != then_lit);
   const bool allow_empty_lrat_clause =
       g->degenerated_gate != Special_Gate::NORMAL;
   if (lhs == cond) {
@@ -5370,24 +5395,6 @@ bool Closure::rewrite_ite_gate_else_to_not_then (Gate *g, int cond, int then_lit
       unsimplified.clear ();
     }
     learn_congruence_unit (-then_lit);
-    delete_proof_chain();
-    garbage = true;
-  } else if (not_lhs == then_lit) {
-    if (internal->lrat) {
-      rewrite_clauses_and_clean (
-          g->pos_lhs_ids(), not_lhs, false, allow_empty_lrat_clause);
-      assert (g->pos_lhs_ids().size () == 2);
-      lrat_chain.push_back (g->pos_lhs_ids()[0].clause->id);
-      lrat_chain.push_back (g->pos_lhs_ids()[1].clause->id);
-    } else if (internal->proof) {
-      unsimplified.push_back(cond);
-      unsimplified.push_back(lhs);
-      simplify_and_add_to_proof_chain (unsimplified);
-      unsimplified[1] = -lhs;
-      simplify_and_add_to_proof_chain (unsimplified);
-      unsimplified.clear ();
-    }
-    learn_congruence_unit (cond);
     delete_proof_chain();
     garbage = true;
   } else {
@@ -5489,6 +5496,7 @@ bool Closure::rewrite_ite_gate_to_xor (Gate *g) {
     if (i != 2) {
       LOG (g, "removed units");
     }
+    COVER (!i);
     if (!i)
       garbage = true;
     else if (i == 1) {
@@ -5729,7 +5737,6 @@ void Closure::produce_ite_merge_rhs_cond (Gate *g, int else_lit, int lhs) {
   }
 }
 
-// covering done
 bool Closure::produce_ite_merge_lhs_then_else_reasons (
   Gate *g, bool rewritting_then, int unit) {
   std::vector<LRAT_ID> reasons_implication, reasons_back, reasons_unit;
@@ -5932,6 +5939,7 @@ bool Closure::produce_ite_merge_lhs_then_else_reasons (
   // already merged: only unit is important
    if (internal->unsat || repr_lhs == repr_lit_to_merge) {
     lrat_chain.clear ();
+    COVER (repr_lhs == repr_lit_to_merge);
     return true;
   }
 
@@ -5952,10 +5960,8 @@ bool Closure::produce_ite_merge_lhs_then_else_reasons (
     ++internal->stats.congruence.unaries;
     ++internal->stats.congruence.unary_ites;
   }
-
   return true;
 }
-
 
 bool Closure::rewrite_ite_gate_to_xor_or_and (Gate *g, Gate_Type new_tag,
                                               int src, int dst,
@@ -5968,6 +5974,7 @@ bool Closure::rewrite_ite_gate_to_xor_or_and (Gate *g, Gate_Type new_tag,
   if (new_tag == Gate_Type::XOr_Gate) {
     bool negate_lhs = false;
     if (rhs[0] < 0) {
+      COVER (true);
       rhs[0] = -rhs[0];
       negate_lhs = !negate_lhs;
     }
@@ -6088,6 +6095,7 @@ bool Closure::rewrite_ite_gate_to_xor_or_and (Gate *g, Gate_Type new_tag,
       } else {
         // the gate does not exist, just update the occurrence lists.
         garbage = false;
+        COVER (!g->indexed);
         if (g->indexed)
           remove_gate (git);
         index_gate (g);
@@ -6681,6 +6689,7 @@ void Closure::simplify_ite_gate_condition_set (
   for (auto litid : g->pos_lhs_ids())
     LOG (litid.clause, "clause in gate:");
 #endif
+
   if (c)
     produce_lrat_chain_for_rewriting (c, Rewrite (), reasons_lrat, true,
                                      Rewrite (), -g->lhs);
@@ -6964,6 +6973,8 @@ void Closure::add_ite_matching_proof_chain (
       h_neg_else_id = h_neg_else_clause->id;
   }
 
+  // covering the `if(...) lrat_chain.push_back (...)` below is very hard, but they do happen (we managed to
+  // cover some of them)
   if (degenerated_g_cond) {
     LOG ("special case: cond = lhs, g degenerated");
     unsimplified.push_back (-lhs1);
@@ -6972,6 +6983,7 @@ void Closure::add_ite_matching_proof_chain (
     if (internal->lrat) {
       assert (g_then_id);
       lrat_chain.push_back (g_then_id);
+      COVER (!h_neg_then_id);
       if (h_neg_then_id)
         lrat_chain.push_back (h_neg_then_id);
     }
@@ -7014,9 +7026,10 @@ void Closure::add_ite_matching_proof_chain (
     LRAT_ID id2 = 0;
     if (internal->lrat) {
       lrat_chain.push_back (h_neg_else_id);
+      COVER (!g_else_id);
       if (g_else_id)
         lrat_chain.push_back (g_else_id);
-    }
+    }else COVER (true);
     id2 = simplify_and_add_to_proof_chain (unsimplified);
 
     assert (!internal->lrat || id1);
@@ -7068,6 +7081,7 @@ void Closure::add_ite_matching_proof_chain (
     if (internal->lrat) {
       assert (h_neg_then_id);
       lrat_chain.push_back (h_neg_then_id);
+      COVER (!g_then_id);
       if (g_then_id)
         lrat_chain.push_back (g_then_id);
     }
@@ -7081,6 +7095,7 @@ void Closure::add_ite_matching_proof_chain (
     if (internal->lrat) {
       assert (h_else_id);
       lrat_chain.push_back (h_else_id);
+      COVER (!g_neg_else_id);
       if (g_neg_else_id)
         lrat_chain.push_back (g_neg_else_id);
     }

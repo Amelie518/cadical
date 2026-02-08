@@ -107,16 +107,25 @@ typedef int64_t LRAT_ID;
 // times. If we set any literal, we actually restart the loop and try to merge
 // more variables.
 //
+// There is another (subtle) difference to Kissat: we keep track of degenerated
+// gates even in non-production mode. It is not clear to use how useful this
+// really is, but it is this make the procedure more complete, because it is
+// more likely to trigger the special cases that we have added to CaDiCaL to
+// propagate units.
+//
 // Remark (*)
 //
 // One more vexing thing: we cannot eagerly remove units anymore when producing
-// LRAT. It very very rarely breaks, but down the road we would to distinguish
-// between literals that have been removed from the gate and literals that
-// appear in the gate and have not been simplified yet. After much thinking, we
-// dediced (in the case a unit is found) to rewrite the gate clause. It is
-// annoying, but rewriting the units seems more important to find units and
-// merge literals early.
+// LRAT with lazy rewriting on the clauses. It very very rarely breaks, but down
+// the road we would need to distinguish between literals that have been removed
+// from the gate and literals that appear in the gate and have not been
+// simplified yet. After much thinking, we dediced (in the case a unit is found)
+// to rewrite the gate clause. It is annoying, but rewriting the units seems
+// more important to find units and merge literals early. This concerns only
+// literals removed as a side-effect of rewriting, not the literals removed
+// during simplification.
 struct Internal;
+
 // Here come some implementation remarks.
 //
 // An important point: We cannot use internal->lrat_chain and
@@ -276,9 +285,10 @@ struct smaller_clause_size_rank {
 // The latter version can only happen when converting ITE gates to AND
 // gates.
 //
-// They have a peculiarity: being special can fix itself. To avoid
-// one more special case, we rewrite the LHS in that case too to make sure
-// it remains special.
+// They have a peculiarity: being special can fix itself (according to the
+// literals in the gate), but it won't make the missing reason clauses appear.
+// To avoid one more special case, we rewrite the LHS in that case too to make
+// sure it remains special.
 //
 enum Special_Gate {
   NORMAL = 0,

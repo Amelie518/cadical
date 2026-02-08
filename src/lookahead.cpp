@@ -303,7 +303,7 @@ int Internal::lookahead_probing () {
   if (unsat)
     return INT_MIN;
   if (level)
-    backtrack ();
+    backtrack_without_updating_phases ();
   if (!propagate ()) {
     MSG ("empty clause before probing");
     learn_empty_clause ();

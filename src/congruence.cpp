@@ -5880,10 +5880,12 @@ bool Closure::produce_ite_merge_lhs_then_else_reasons (
       if (internal->unsat)
         return true;
 
-      if (internal->lrat) {
+      if (internal->lrat && g->lhs != lit_to_merge) {
         reasons_implication.push_back (internal->unit_id (unit));
+        assert (g->pos_lhs_ids()[other_idx1].clause);
         reasons_implication.push_back (g->pos_lhs_ids()[other_idx1].clause->id);
         reasons_back.push_back (internal->unit_id (unit));
+        assert (g->pos_lhs_ids()[other_idx2].clause);
         reasons_back.push_back (g->pos_lhs_ids()[other_idx2].clause->id);
       }
       if (merge_literals (g->lhs, lit_to_merge, reasons_implication,

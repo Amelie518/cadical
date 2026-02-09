@@ -69,7 +69,7 @@ struct DDFW_Counter {
 };
 
 struct Walker_DDFW {
-
+  static constexpr size_t invalid_position = UINT32_MAX;
   Internal *internal;
 
   // for efficiency, storing the model each time an improvement is
@@ -83,7 +83,7 @@ struct Walker_DDFW {
   std::vector<double> var_unsat_weights;
   std::vector<int>  flips; // remember the flips compared to the last best saved model
   int best_trail_pos;
-  size_t minimum = INT64_MAX;
+  size_t minimum = (size_t)-1;
   std::vector<signed char> best_values; // best model found so far
 
 
@@ -295,7 +295,6 @@ struct Walker_DDFW {
     check_vars_in_broken();
   }
 
-  static const uint32_t invalid_position = UINT32_MAX;
   void make_clause (DDFW_Tagged t, int);
 
   Walker_DDFW (Internal *, int64_t limit);
@@ -448,7 +447,7 @@ void Walker_DDFW::make_clause (DDFW_Tagged t, int lit) {
          "already made with counter %d at position %zd",
          d.count, d.pos);
     assert (d.clause == t.c);
-    assert (d.pos == Walker_DDFW::invalid_position);
+    assert (d.pos == invalid_position);
     if (old_count == 1) {
       critical_sat_weight (old_critical) -= d.weight;
     }
@@ -457,7 +456,7 @@ void Walker_DDFW::make_clause (DDFW_Tagged t, int lit) {
   LOG (d.clause,
        "make with counter %d at position %zd", d.count,
        d.pos);
-  assert (d.pos != Walker_DDFW::invalid_position);
+  assert (d.pos != invalid_position);
   assert (d.pos < broken.size ());
   ++ticks;
   auto last = broken.back ();
@@ -471,7 +470,7 @@ void Walker_DDFW::make_clause (DDFW_Tagged t, int lit) {
   broken[pos] = last;
   // the order is important
   clause_info(last.counter_pos).pos = pos;
-  d.pos = Walker_DDFW::invalid_position;
+  d.pos = invalid_position;
   broken.pop_back ();
 
   ++ticks;
@@ -527,7 +526,7 @@ void Walker_DDFW::make_clauses_along_unsatisfied (int lit) {
     assert (c.counter_pos < weight_clause_info.size ());
     DDFW_Counter &d = this->clause_info (c.counter_pos);
     this->broken[j++] = this->broken[i];
-    assert (d.pos != Walker_DDFW::invalid_position);
+    assert (d.pos != invalid_position);
     ++ticks;
     for (auto other : *d.clause) {
       if (lit == other) {
@@ -535,11 +534,11 @@ void Walker_DDFW::make_clauses_along_unsatisfied (int lit) {
         --j;
         ++d.count;
         LOG (d.clause, "made with count %d", d.count);
-        d.pos = Walker_DDFW::invalid_position;
+        d.pos = invalid_position;
         break;
       }
     }
-    if (d.pos != Walker_DDFW::invalid_position)
+    if (d.pos != invalid_position)
       LOG (d.clause, "still broken");
     assert (made + j == i + 1); // assertions holds after incrementing 'i'
   }
@@ -606,7 +605,7 @@ void Walker_DDFW::break_clauses (int lit) {
     broken++;
 #endif
   }
-  LOG ("broken %" PRId64 " clauses by flipping %d", broken, lit);
+  LOG ("broken %zd clauses by flipping %d", broken, lit);
   internal->stats.ticks.walkflipbroken += ticks - old;
   STOP (walkflipbroken);
 }
@@ -638,7 +637,7 @@ void Walker_DDFW::walk_ddfw_flip_lit (int lit) {
 /*------------------------------------------------------------------------*/
 
 size_t Walker_DDFW::maximum_weight_neighbor (Clause *c) {
-  size_t max_clause = Walker_DDFW::invalid_position;
+  size_t max_clause = invalid_position;
   double max_weight = std::numeric_limits<double>::min ();
   ++ticks;
   for (auto lit : *c) {
@@ -650,7 +649,7 @@ size_t Walker_DDFW::maximum_weight_neighbor (Clause *c) {
       assert (neighbor.clause);
       if (!neighbor.count)
         continue;
-      if (max_clause == Walker_DDFW::invalid_position || neighbor.weight > max_weight)
+      if (max_clause == invalid_position || neighbor.weight > max_weight)
         max_clause = c.counter_pos;
     }
   }
@@ -658,9 +657,9 @@ size_t Walker_DDFW::maximum_weight_neighbor (Clause *c) {
 }
 
 size_t Walker_DDFW::random_satisfied_big_weight_clause (double w_0) {
-  size_t max_clause = Walker_DDFW::invalid_position;
+  size_t max_clause = invalid_position;
   bool use_weight_condition = true;
-  while (max_clause == Walker_DDFW::invalid_position) {
+  while (max_clause == invalid_position) {
     size_t pos = random.pick_int(0, weight_clause_info.size ()-1);
     assert (pos < weight_clause_info.size ());
     const DDFW_Counter &c = clause_info (pos);
@@ -690,10 +689,10 @@ void Walker_DDFW::transfer_weights () {
     assert (robber.clause);
     size_t robbed_pos = maximum_weight_neighbor (robber.clause);
     double p = random.generate_double();
-    if (robbed_pos == Walker_DDFW::invalid_position || clause_info (robbed_pos).weight < w_0 || p < cspt)
+    if (robbed_pos == invalid_position || clause_info (robbed_pos).weight < w_0 || p < cspt)
       robbed_pos = random_satisfied_big_weight_clause (w_0);
     // TODO does this really trigger?
-    if (robbed_pos == Walker_DDFW::invalid_position)
+    if (robbed_pos == invalid_position)
       continue;
     assert (robbed_pos < weight_clause_info.size ());
     DDFW_Counter &robbed = clause_info (robbed_pos);
@@ -763,9 +762,9 @@ inline void Internal::walk_ddfw_save_minimum (Walker_DDFW &walker) {
     return;
   if (broken <= stats.walk.minimum) {
     stats.walk.minimum = broken;
-    VERBOSE (3, "new global minimum %" PRId64 "", broken);
+    VERBOSE (3, "new global minimum %zd", broken);
   } else {
-    VERBOSE (3, "new walk minimum %" PRId64 "", broken);
+    VERBOSE (3, "new walk minimum %zd", broken);
   }
 
   walker.minimum = broken;
@@ -853,7 +852,7 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
          "random walk limit of %" PRId64 " propagations", limit);
 
   PHASE ("walk", stats.walk.count,
-         "%" PRId64 " clauses over %d variables", clauses.size (),
+         "%zd clauses over %d variables", clauses.size (),
          active ());
 
   // Instantiate data structures for this local search round.
@@ -923,7 +922,8 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
     walker.var_unsat_weights.resize (internal->max_var+1, 0);
     walker.noccs_vars_in_broken.resize (internal->max_var+1, 0);
     walker.noccs_vars_in_broken.resize (internal->max_var+1, 0);
-    walker.position_vars_in_broken.resize (internal->max_var+1, Walker_DDFW::invalid_position);
+    const size_t i = walker.invalid_position; // I get a compilation error otherwise
+    walker.position_vars_in_broken.resize (internal->max_var+1, i);
 
     for (const auto c : clauses) {
       if (c->garbage)
@@ -968,7 +968,7 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
 
       assert (satisfied <= (size_t)c->size);
       size_t pos = walker.weight_clause_info.size ();
-      DDFW_Counter cw = DDFW_Counter (satisfied, Walker_DDFW::invalid_position, critical, c, Walker_DDFW::w_0);
+      DDFW_Counter cw = DDFW_Counter (satisfied, walker.invalid_position, critical, c, Walker_DDFW::w_0);
       LOG ("found %zd clauses so far, it has %d satisfied literals", pos, satisfied);
       walker.weight_clause_info.push_back (cw);
 #ifdef LOGGING
@@ -1005,7 +1005,7 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
     if (!failed) {
       size_t broken = walker.broken.size ();
       size_t total = watched + broken;
-      MSG ("watching %zd clauses %.0f%% "
+      MSG ("watching %" PRId64 " clauses %.0f%% "
            "out of %zd (watched and broken)",
            watched, percent (watched, total), total);
     }
@@ -1046,10 +1046,10 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
       stats.walk.broken += broken;
 
       broken = walker.broken.size ();
-      LOG ("now have %" PRId64 " broken clauses in total", broken);
+      LOG ("now have %zd broken clauses in total", broken);
       if (broken < minimum) {
         minimum = broken;
-        VERBOSE (3, "new phase minimum %" PRId64 " after %" PRId64 " flips",
+        VERBOSE (3, "new phase minimum %zd after %" PRId64 " flips",
                minimum, flips);
         walk_ddfw_save_minimum (walker);
       }
@@ -1083,13 +1083,13 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
 #ifndef QUIET
     if (minimum == initial_minimum) {
       PHASE ("walk", internal->stats.walk.count,
-             "%sno improvement %" PRId64 "%s in %" PRId64 " flips and "
+             "%sno improvement %zd%s in %" PRId64 " flips and "
              "%" PRId64 " ticks",
              tout.bright_yellow_code (), minimum, tout.normal_code (),
              flips, walker.ticks);
     } else {
       PHASE ("walk", internal->stats.walk.count,
-             "best phase minimum %" PRId64 " in %" PRId64 " flips and "
+             "best phase minimum %zd in %" PRId64 " flips and "
              "%" PRId64 " ticks",
              minimum, flips, walker.ticks);
     }
@@ -1110,7 +1110,7 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
     }
 
     if (minimum > 0) {
-      LOG ("minimum %" PRId64 " non-zero thus potentially continue",
+      LOG ("minimum %zd non-zero thus potentially continue",
            minimum);
       res = 0;
     } else {

@@ -780,7 +780,7 @@ void Stats::print (Internal *internal) {
            stats.walk.flips, relative (stats.walk.flips, stats.walk.count));
     if (stats.walk.minimum < LONG_MAX)
       PRT ("  minimum:       %15" PRId64 "   %10.2f %%  clauses",
-           stats.walk.minimum,
+           (int64_t)stats.walk.minimum,
            percent (stats.walk.minimum, stats.added.irredundant));
     PRT ("  broken:        %15" PRId64 "   %10.2f    per flip",
          stats.walk.broken, relative (stats.walk.broken, stats.walk.flips));

@@ -50,7 +50,7 @@ struct WalkerFO {
   std::vector<int>
       flips; // remember the flips compared to the last best saved model
   int best_trail_pos;
-  size_t minimum = INT64_MAX;
+  size_t minimum = (size_t)-1;
   std::vector<signed char> best_values; // best model found so far
   double score (unsigned);              // compute score from break count
 
@@ -567,7 +567,7 @@ void WalkerFO::break_clauses (int lit) {
     broken++;
 #endif
   }
-  LOG ("broken %" PRId64 " clauses by flipping %d", broken, lit);
+  LOG ("broken %zd clauses by flipping %d", broken, lit);
   internal->stats.ticks.walkflipbroken += ticks - old;
   STOP (walkflipbroken);
 }
@@ -604,9 +604,9 @@ inline void Internal::walk_full_occs_save_minimum (WalkerFO &walker) {
     return;
   if (broken <= stats.walk.minimum) {
     stats.walk.minimum = broken;
-    VERBOSE (3, "new global minimum %" PRId64 "", broken);
+    VERBOSE (3, "new global minimum %zd", broken);
   } else {
-    VERBOSE (3, "new walk minimum %" PRId64 "", broken);
+    VERBOSE (3, "new walk minimum %zd", broken);
   }
 
   walker.minimum = broken;
@@ -813,7 +813,7 @@ int Internal::walk_full_occs_round (int64_t limit, bool prev) {
     if (!failed) {
       size_t broken = walker.broken.size ();
       size_t total = watched + broken;
-      MSG ("watching %zd clauses %.0f%% "
+      MSG ("watching %" PRId64 "clauses %.0f%% "
            "out of %zd (watched and broken)",
            watched, percent (watched, total), total);
     }
@@ -852,11 +852,11 @@ int Internal::walk_full_occs_round (int64_t limit, bool prev) {
       walker.walk_full_occs_flip_lit (lit);
       walker.push_flipped (lit);
       broken = walker.broken.size ();
-      LOG ("now have %" PRId64 " broken clauses in total", broken);
+      LOG ("now have %zd broken clauses in total", broken);
       if (broken >= minimum)
         continue;
       minimum = broken;
-      VERBOSE (3, "new phase minimum %" PRId64 " after %" PRId64 " flips",
+      VERBOSE (3, "new phase minimum %zd after %" PRId64 " flips",
                minimum, flips);
       walk_full_occs_save_minimum (walker);
     }
@@ -865,13 +865,13 @@ int Internal::walk_full_occs_round (int64_t limit, bool prev) {
 #ifndef QUIET
     if (minimum == initial_minimum) {
       PHASE ("walk", internal->stats.walk.count,
-             "%sno improvement %" PRId64 "%s in %" PRId64 " flips and "
+             "%sno improvement %zd%s in %" PRId64 " flips and "
              "%" PRId64 " ticks",
              tout.bright_yellow_code (), minimum, tout.normal_code (),
              flips, walker.ticks);
     } else {
       PHASE ("walk", internal->stats.walk.count,
-             "best phase minimum %" PRId64 " in %" PRId64 " flips and "
+             "best phase minimum %zd in %" PRId64 " flips and "
              "%" PRId64 " ticks",
              minimum, flips, walker.ticks);
     }
@@ -892,7 +892,7 @@ int Internal::walk_full_occs_round (int64_t limit, bool prev) {
     }
 
     if (minimum > 0) {
-      LOG ("minimum %" PRId64 " non-zero thus potentially continue",
+      LOG ("minimum %zd non-zero thus potentially continue",
            minimum);
       res = 0;
     } else {

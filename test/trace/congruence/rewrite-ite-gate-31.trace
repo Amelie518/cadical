@@ -94,7 +94,6 @@
 93 set probehbr 1
 94 set probethresh 1
 95 set profile 1
-96 set quiet 1
 97 set randec 1
 98 set randecfocused 0
 99 set randecinit 2
@@ -143,8 +142,6 @@
 142 set transredmineff 1
 143 set varprioritizefirst 1
 144 set vartumble 1
-145 set verbose 1
-146 set veripb 2
 147 set vivify 0
 148 set warmup 0
 149 add -5

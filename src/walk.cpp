@@ -36,7 +36,7 @@ struct Walker {
   std::vector<int>
       flips; // remember the flips compared to the last best saved model
   int best_trail_pos;
-  size_t minimum = INT64_MAX;
+  size_t minimum = (size_t)(-1);
   std::vector<signed char> best_values; // best model stored so far
   double score (unsigned);              // compute score from break count
 #ifndef NDEBUG
@@ -702,9 +702,9 @@ inline void Internal::walk_save_minimum (Walker &walker) {
     return;
   if (broken <= stats.walk.minimum) {
     stats.walk.minimum = broken;
-    VERBOSE (3, "new global minimum %" PRId64 "", broken);
+    VERBOSE (3, "new global minimum %zd", broken);
   } else {
-    VERBOSE (3, "new walk minimum %" PRId64 "", broken);
+    VERBOSE (3, "new walk minimum %zd", broken);
   }
 
   walker.minimum = broken;
@@ -734,7 +734,7 @@ inline void Internal::walk_save_minimum (Walker &walker) {
   }
 #endif
   if (walker.best_trail_pos == -1) {
-    VERBOSE (3, "saving the new walk minimum %" PRId64 "", broken);
+    VERBOSE (3, "saving the new walk minimum %zd", broken);
     for (auto i : vars) {
       const signed char tmp = vals[i];
       if (tmp) {
@@ -942,7 +942,7 @@ int Internal::walk_round (int64_t limit, bool prev) {
     size_t initial_minimum = broken;
 
     PHASE ("walk", stats.walk.count,
-           "starting with %" PRId64 " unsatisfied clauses "
+           "starting with %zd unsatisfied clauses "
            "(%.0f%% out of %" PRId64 ")",
            broken, percent (broken, stats.current.irredundant),
            stats.current.irredundant);
@@ -968,11 +968,11 @@ int Internal::walk_round (int64_t limit, bool prev) {
         break;
       walker.push_flipped (lit);
       broken = walker.broken.size ();
-      LOG ("now have %" PRId64 " broken clauses in total", broken);
+      LOG ("now have %zd broken clauses in total", broken);
       if (broken >= minimum)
         continue;
       minimum = broken;
-      VERBOSE (3, "new phase minimum %" PRId64 " after %" PRId64 " flips",
+      VERBOSE (3, "new phase minimum %zd after %" PRId64 " flips",
                minimum, flips);
       walk_save_minimum (walker);
     }
@@ -982,19 +982,19 @@ int Internal::walk_round (int64_t limit, bool prev) {
 #ifndef QUIET
     if (minimum == initial_minimum) {
       PHASE ("walk", internal->stats.walk.count,
-             "%sno improvement %" PRId64 "%s in %" PRId64 " flips and "
+             "%sno improvement %zd%s in %" PRId64 " flips and "
              "%" PRId64 " ticks",
              tout.bright_yellow_code (), minimum, tout.normal_code (),
              flips, walker.ticks);
     } else if (minimum < old_global_minimum)
       PHASE ("walk", stats.walk.count,
-             "%snew global minimum %" PRId64 "%s in %" PRId64 " flips and "
+             "%snew global minimum %zd%s in %" PRId64 " flips and "
              "%" PRId64 " ticks",
              tout.bright_yellow_code (), minimum, tout.normal_code (),
              flips, walker.ticks);
     else
       PHASE ("walk", stats.walk.count,
-             "best phase minimum %" PRId64 " in %" PRId64 " flips and "
+             "best phase minimum %zd in %" PRId64 " flips and "
              "%" PRId64 " ticks",
              minimum, flips, walker.ticks);
 
@@ -1014,7 +1014,7 @@ int Internal::walk_round (int64_t limit, bool prev) {
 #endif
 
     if (minimum > 0) {
-      LOG ("minimum %" PRId64 " non-zero thus potentially continue",
+      LOG ("minimum %zd non-zero thus potentially continue",
            minimum);
       res = 0;
     } else {

@@ -5222,6 +5222,10 @@ void Closure::produce_ite_merge_then_else_reasons (
     Gate *g, int src, int dst, std::vector<LRAT_ID> &reasons_implication,
     std::vector<LRAT_ID> &reasons_back) {
   assert (!g->garbage);
+#ifdef NDEBUG
+  (void) src;
+  (void) dst;
+#endif
   check_correct_ite_flags (g);
   //obfuscating because flexible array members.
   int *grhs = g->rhs;

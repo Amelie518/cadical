@@ -1278,20 +1278,13 @@ void Closure::learn_congruence_unit_when_lhs_set (Gate *g, int src,
   assert (internal->analyzed.empty ());
   assert (internal->val (g->lhs) < 0);
   assert (g->tag == Gate_Type::And_Gate);
+  assert (g->arity () == 1);
   LOG (lrat_chain, "lrat");
   LOG (lrat_chain, "lrat");
-  if (g->neg_lhs_id () ()) {
-    produce_lrat_chain_for_rewriting (g->neg_lhs_id ().content.clause,
-                                     Rewrite (src, dst, id1, id2),
-                                     lrat_chain);}
-  else {
-    COVER (true);
-    assert (g->degenerated_gate == Special_Gate::DEGENERATED_AND ||
-            g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE);
-    assert (g->pos_lhs_ids().size () == 1);
-    produce_lrat_chain_for_rewriting (
-        g->pos_lhs_ids()[0].clause, Rewrite (src, dst, id1, id2), lrat_chain);
-  }
+  assert (g->neg_lhs_id() ());
+  produce_lrat_chain_for_rewriting (g->neg_lhs_id ().content.clause,
+    Rewrite (src, dst, id1, id2),
+    lrat_chain);
   LOG (lrat_chain, "lrat");
 }
 
@@ -1552,11 +1545,7 @@ bool Closure::really_merge_literals (
       lrat_chain.clear ();
     return false;
   }
-  if (repr_lit == repr_other) {
-    COVER (true);
-    LOG ("already merged %s and %s", LOGLIT (lit), LOGLIT (other));
-    return false;
-  }
+  assert (repr_lit != repr_other);
   if (abs (smaller_repr) > abs (larger_repr)) {
     swap (smaller_repr, larger_repr);
     swap (smaller, larger);
@@ -2225,28 +2214,6 @@ void Closure::update_and_gate_unit_build_lrat_chain (
     // need them anyway
     return;
   }
-
-  if (!g->neg_lhs_id () ()) {
-    COVER (true);
-
-    if (g->degenerated_gate == Special_Gate::DEGENERATED_AND ||
-        g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE) {
-          COVER (true);
-      // can happen for 4 = AND 3 4 (degenerated with only the clause -4 3)
-      // with a rewriting 4 -> 1 (unchanged clause)
-      // and later 1 -> 3 (unchanged clause)
-      // but you do not know anymore from the gate that it is degenerated
-      assert (g->pos_lhs_ids().size () == 1);
-      produce_lrat_chain_for_rewriting (g->pos_lhs_ids()[0].clause, Rewrite (),
-                                       extra_reasons_ulit, true,
-                                       Rewrite ());
-      return;
-    }
-    assert (g->lhs == g->rhs[0] || (g->lhs == src && g->rhs[0] == dst));
-    assert (g->pos_lhs_ids().size () <=
-            1); // either degenerated or empty A = A
-    return;
-  }
   assert (g->neg_lhs_id () ());
   assert (!g->pos_lhs_ids().empty ());
 
@@ -2352,35 +2319,18 @@ void Closure::produce_lrat_for_and_merge (
     LOG (tauto, "now creating lrat with other gate");
     // if tauto can also be a tautology: neg_lhs_id
     // otherwise the clause is in pos_lhs_ids
-    if (!other->neg_lhs_id () ()) {
-      COVER (true);
-      // happens also if the tauto also has a negative lhs
-      for (auto &litId : other->pos_lhs_ids ()) {
-        assert (extra_reasons_ulit.empty ());
-        assert (litId.clause);
-        LOG (litId.clause, "binary clause to push into the reason");
-        litId.clause =
-            rewrite_clause (litId.clause, 0, remove_units);
-        if (litId.clause) {
-          extra_reasons_lit.push_back (litId.clause->id);
-          COVER (true);
-        }
-        else
-          COVER (true);
-      }
-    } else {
-      auto &litId = other->neg_lhs_id ().content;
-      LOG (litId.clause,
-        "binary clause to push into the reason for literal %s",
-        LOGLIT (litId.current_lit));
-      if (litId.current_lit == tauto->lhs || true) {
-        assert (extra_reasons_ulit.empty ());
-        assert (litId.clause);
-        litId.clause =
-          rewrite_clause (litId.clause, 0, remove_units);
-        if (litId.clause)
-          extra_reasons_lit.push_back (litId.clause->id);
-      }
+    assert (other->neg_lhs_id() ());
+    auto &litId = other->neg_lhs_id ().content;
+    LOG (litId.clause,
+      "binary clause to push into the reason for literal %s",
+      LOGLIT (litId.current_lit));
+    if (litId.current_lit == tauto->lhs || true) {
+      assert (extra_reasons_ulit.empty ());
+      assert (litId.clause);
+      litId.clause =
+        rewrite_clause (litId.clause, 0, remove_units);
+      if (litId.clause)
+        extra_reasons_lit.push_back (litId.clause->id);
     }
     return;
   }
@@ -2554,7 +2504,7 @@ void Closure::update_and_gate (Gate *g, GatesTable::iterator it, int src,
       lrat_chain.clear ();
   } else if (g->arity () == 1) {
     const signed char v = internal->val (g->lhs);
-    // The assymetry comes from the AND gate and the conversion ITE to AND. If
+    // The asymmetry comes from the AND gate and the conversion ITE to AND. If
     // the LHS is true, we can directly propagate all the values on the RHS.
     // This is done either directly by propagation or during the ITE to AND
     // conversion.
@@ -2566,7 +2516,7 @@ void Closure::update_and_gate (Gate *g, GatesTable::iterator it, int src,
     // have the simplification during the ITE to AND conversion. It is not clear
     // if this makes CaDiCaL more complete (it basically depends whether the
     // literal was already propagated or not: if not, the propagation might be
-    // delayed to decompode later)
+    // delayed to decompose later)
     assert (v <= 0);
     if (v < 0) {
       if (internal->lrat)
@@ -2603,12 +2553,10 @@ void Closure::update_and_gate (Gate *g, GatesTable::iterator it, int src,
                           extra_reasons_ulit2))
         ++internal->stats.congruence.ands;
     } else {
-      if (g->indexed) {
-        assert (it != table.end ());
-        LOG (g, "removing from table");
-        (void) table.erase (it);
-      } else
-        COVER (true);
+      assert (g->indexed);
+      assert (it != table.end ());
+      LOG (g, "removing from table");
+      (void) table.erase (it);
       LOG (g, "inserting gate into table");
       assert (table.count (g) == 0);
       table.insert (g);
@@ -2714,6 +2662,7 @@ void Closure::update_xor_gate (Gate *g, GatesTable::iterator git) {
 void Closure::simplify_and_gate (Gate *g) {
   if (skip_and_gate (g))
     return;
+  assert (g->indexed);
   GatesTable::iterator git = (g->indexed ? table.find (g) : end (table));
   assert (!g->indexed || git != end (table));
   LOG (g, "simplifying");
@@ -4536,6 +4485,7 @@ void Closure::rewrite_and_gate (Gate *g, int dst, int src, LRAT_ID id1,
   assert (dst);
   assert (internal->val (src) == internal->val (dst));
   LOG (g, "rewriting %d into %d in", src, dst);
+  assert (g->indexed);
   GatesTable::iterator git = (g->indexed ? table.find (g) : end (table));
   assert (!g->indexed || git != table.end ());
   int clashing = 0, falsifies = 0;
@@ -4744,6 +4694,7 @@ void Closure::rewrite_xor_gate (Gate *g, int dst, int src) {
     return;
   LOG (g, "rewriting (%d -> %d)", src, dst);
   check_xor_gate_implied (g);
+  assert (g->indexed);
   GatesTable::iterator git = (g->indexed ? table.find (g) : end (table));
   size_t j = 0, dst_count = 0;
   bool original_dst_negated = (dst < 0);
@@ -4815,6 +4766,7 @@ void Closure::simplify_xor_gate (Gate *g) {
     return;
   check_xor_gate_implied (g);
   unsigned negate = 0;
+  assert (g->indexed);
   GatesTable::iterator git = (g->indexed ? table.find (g) : end (table));
   const size_t size = g->arity ();
   size_t j = 0;
@@ -6095,9 +6047,8 @@ bool Closure::rewrite_ite_gate_to_xor_or_and (Gate *g, Gate_Type new_tag,
       } else {
         // the gate does not exist, just update the occurrence lists.
         garbage = false;
-        COVER (!g->indexed);
-        if (g->indexed)
-          remove_gate (git);
+        assert (g->indexed);
+        remove_gate (git);
         index_gate (g);
         assert (g->arity () == 2);
         for (auto lit : *g)
@@ -6137,6 +6088,7 @@ void Closure::rewrite_ite_gate (Gate *g, int dst, int src) {
 
   bool garbage = false;
   bool shrink = true;
+  assert (g->indexed);
   const auto git = g->indexed ? table.find (g) : end (table);
   assert (!g->indexed || git != end (table));
   assert (*git == g);
@@ -6777,6 +6729,7 @@ void Closure::simplify_ite_gate (Gate *g) {
       }
     } else {
       assert (!!v_then + !!v_else == 1);
+      assert (g->indexed);
       auto git = g->indexed ? table.find (g) : end (table);
       assert (!g->indexed || git != end (table));
       if (v_then > 0) {

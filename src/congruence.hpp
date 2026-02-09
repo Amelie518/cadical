@@ -154,6 +154,10 @@ struct Internal;
 // set leading to a unit. This is nice for DRAT proofs but highly impractible
 // for LRAT where the regularity is critical to be able to produce correct
 // proofs.
+//
+// For AND gates, we ensure that the other_neg_lhs_id () is *never* empty,
+// unless LRAT is off. This was not the case at the beginning of the
+// implementation, but it really makes the implementation more easy.
 
 // Maximum arity to be able to use bits to keep information. Superseeds the
 // options.

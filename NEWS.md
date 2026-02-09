@@ -12,7 +12,14 @@ Version 3.0.X
 - For models, CaDiCaL now outputs only the literals that are present
   in the problem. Use `modelalllits` to get all literals.
 
-- decompose now also works on frozen literals
+- Equivalent literals substitution (`decompose`) now also works on frozen
+  literals: those literals are replaced (but are kept obviously via binary
+  clauses).
+
+- Improved walk with assumptions (literals propagated by the assumptions cannot
+  be flipped anymore).
+
+- New DDFW algorithm for walking
 
 
 Version 3.0.0

@@ -6983,7 +6983,6 @@ void Closure::add_ite_matching_proof_chain (
     if (internal->lrat) {
       assert (g_then_id);
       lrat_chain.push_back (g_then_id);
-      COVER (!h_neg_then_id);
       if (h_neg_then_id)
         lrat_chain.push_back (h_neg_then_id);
     }
@@ -7029,7 +7028,7 @@ void Closure::add_ite_matching_proof_chain (
       COVER (!g_else_id);
       if (g_else_id)
         lrat_chain.push_back (g_else_id);
-    }else COVER (true);
+    }
     id2 = simplify_and_add_to_proof_chain (unsimplified);
 
     assert (!internal->lrat || id1);
@@ -7095,7 +7094,6 @@ void Closure::add_ite_matching_proof_chain (
     if (internal->lrat) {
       assert (h_else_id);
       lrat_chain.push_back (h_else_id);
-      COVER (!g_neg_else_id);
       if (g_neg_else_id)
         lrat_chain.push_back (g_neg_else_id);
     }

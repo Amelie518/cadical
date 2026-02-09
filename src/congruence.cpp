@@ -2488,16 +2488,9 @@ void Closure::update_and_gate (Gate *g, GatesTable::iterator it, int src,
                                                   falsifies, unit);
     if (g->degenerated_gate == Special_Gate::DEGENERATED_AND ||
         g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE) {
-      int other = find_eager_representative_and_compress (-unit);
-      if (internal->lrat && -unit != other) {
-        COVER (true);
-        assert (internal->lrat_chain.empty ());
-        internal->lrat_chain.push_back (eager_representative_id (-unit));
-        for (auto id : lrat_chain)
-          internal->lrat_chain.push_back (id);
-        lrat_chain.clear ();
-        swap (internal->lrat_chain, lrat_chain);
-      }
+      // if the assertion does not hold, we need to adapt the proof. However, we
+      // have already replaced the LHS by its representative.
+      assert (-unit == find_eager_representative(-unit));
     }
     learn_congruence_unit (unit);
     if (internal->lrat)
@@ -2659,6 +2652,8 @@ void Closure::update_xor_gate (Gate *g, GatesTable::iterator git) {
   assert (clause.empty ());
 }
 
+// In a past version, we were checking if the lhs is in the rhs. However, this
+// is not necessary as we directly check this during rewriting and handle this case there.
 void Closure::simplify_and_gate (Gate *g) {
   if (skip_and_gate (g))
     return;
@@ -2668,7 +2663,6 @@ void Closure::simplify_and_gate (Gate *g) {
   LOG (g, "simplifying");
   int falsifies = 0;
   literal_iterator it = begin (*g);
-  bool ulhs_in_rhs = false;
   if (g->degenerated_gate != Special_Gate::NORMAL) {
     const int old_lhs = g->lhs;
     g->lhs = find_eager_representative (g->lhs);
@@ -2690,12 +2684,9 @@ void Closure::simplify_and_gate (Gate *g) {
       continue;
     }
 
-    if (lit == -g->lhs)
-      ulhs_in_rhs = true;
+    assert (lit != -g->lhs); // handled by rewriting above!
     *it++ = lit;
     if (lit == g->lhs)
-      g->degenerated_gate = DEGENERATED_AND;
-    if (lit == -g->lhs)
       g->degenerated_gate = DEGENERATED_AND;
   }
 
@@ -2730,20 +2721,6 @@ void Closure::simplify_and_gate (Gate *g) {
   update_and_gate (g, git, 0, 0, 0, 0, falsifies, 0);
   ++internal->stats.congruence.simplified_ands;
   ++internal->stats.congruence.simplified;
-
-  if (ulhs_in_rhs) { // missing in Kissat, TODO: port back
-    assert (gate_contains (g, -g->lhs));
-    if (internal->lrat) {
-      for (auto litId : g->pos_lhs_ids()) {
-        if (litId.current_lit == g->lhs) {
-          COVER (true);
-          rewrite_clause_to_clause_vector (litId.clause, 0);
-          break;
-        }
-      }
-    }
-    learn_congruence_unit (-g->lhs);
-  }
 }
 
 bool Closure::simplify_gate (Gate *g) {
@@ -3085,10 +3062,9 @@ void Closure::check_not_tmp_binary_clause (Clause *c) {
   assert (internal->lrat_chain.empty ());
   assert (c);
   assert (c->size == 2);
-  COVER (internal->val (c->literals[0]));
-  COVER (internal->val (c->literals[1]));
-  if (internal->val (c->literals[0]) || internal->val (c->literals[1]))
-    return;
+  // for kissat possible, but not for us...
+  assert (!internal->val (c->literals[0]));
+  assert (!internal->val (c->literals[1]));
   assert (std::find (begin (extra_clauses), end (extra_clauses), c) ==
           end (extra_clauses));
 #else
@@ -4505,10 +4481,7 @@ void Closure::rewrite_and_gate (Gate *g, int dst, int src, LRAT_ID id1,
     }
     if (lit == src)
       lit = dst;
-    COVER (-lit == g->lhs);
     if (lit == g->lhs)
-      g->degenerated_gate = Special_Gate::DEGENERATED_AND;
-    if (-lit == g->lhs)
       g->degenerated_gate = Special_Gate::DEGENERATED_AND;
     const signed char val = internal->val (lit);
     if (val > 0) {
@@ -4532,13 +4505,10 @@ void Closure::rewrite_and_gate (Gate *g, int dst, int src, LRAT_ID id1,
         continue;
     }
     if (lit == -dst) {
-      if (dst_count) {
-        COVER (true);
-        assert (!not_dst_count);
-        LOG ("clashing literals %d and %d", (dst), (-dst));
-        clashing = -dst;
-        break;
-      }
+      // TODO: kissat handles this case, but this cannot happen unless the
+      // and-gate was already a tautology, which handle properly during the
+      // ITE->AND gate conversion.
+      assert (!dst_count);
       assert (!not_dst_count);
       ++not_dst_count;
     }
@@ -5263,15 +5233,6 @@ void Closure::produce_ite_merge_then_else_reasons (
   if (find_eager_representative (g->lhs) == grhs[1] ||
       find_eager_representative (g->lhs) == grhs[2])
     return;
-  COVER ((grhs[1] == src && g->lhs == dst && grhs[2] == g->lhs));
-  COVER ((grhs[2] == src && g->lhs == dst && grhs[1] == g->lhs));
-  COVER ((grhs[1] == -src && g->lhs == -dst && grhs[2] == g->lhs));
-  COVER ((grhs[2] == -src && g->lhs == -dst && grhs[1] == g->lhs));
-  if ((grhs[1] == src && g->lhs == dst && grhs[2] == g->lhs) ||
-      (grhs[2] == src && g->lhs == dst && grhs[1] == g->lhs) ||
-      (grhs[1] == -src && g->lhs == -dst && grhs[2] == g->lhs) ||
-      (grhs[2] == -src && g->lhs == -dst && grhs[1] == g->lhs))
-    return;
   // LHS can change for degenerated gates
   if (g->degenerated_gate != Special_Gate::NORMAL)
     g->lhs = find_eager_representative (g->lhs);
@@ -5448,10 +5409,8 @@ bool Closure::rewrite_ite_gate_to_xor (Gate *g) {
     if (i != 2) {
       LOG (g, "removed units");
     }
-    COVER (!i);
-    if (!i)
-      garbage = true;
-    else if (i == 1) {
+    assert (i);
+    if (i == 1) {
       // can happen when there are units in the
       // gate that are not simplified yet
 #ifdef LOGGING
@@ -5888,10 +5847,12 @@ bool Closure::produce_ite_merge_lhs_then_else_reasons (
   assert (unit == g->lhs || unit == g->rhs[0] || unit == -g->lhs || unit == -g->rhs[0]);
   learn_congruence_unit (unit);
 
+  // cannot happen because the ITE gate would have already been transformed to
+  // an AND gate before.
+  assert (repr_lhs != repr_lit_to_merge);
   // already merged: only unit is important
-   if (internal->unsat || repr_lhs == repr_lit_to_merge) {
+   if (internal->unsat) {
     lrat_chain.clear ();
-    COVER (repr_lhs == repr_lit_to_merge);
     return true;
   }
 
@@ -5925,11 +5886,8 @@ bool Closure::rewrite_ite_gate_to_xor_or_and (Gate *g, Gate_Type new_tag,
   bool garbage = false;
   if (new_tag == Gate_Type::XOr_Gate) {
     bool negate_lhs = false;
-    if (rhs[0] < 0) {
-      COVER (true);
-      rhs[0] = -rhs[0];
-      negate_lhs = !negate_lhs;
-    }
+    // cannot happen due to normalization of the ITE gate
+    assert (rhs[0] > 0);
     if (rhs[1] < 0) {
       rhs[1] = -rhs[1];
       negate_lhs = !negate_lhs;
@@ -6423,11 +6381,10 @@ bool Closure::simplify_ite_gate_to_and (Gate *g, size_t idx1, size_t idx2,
       produce_lrat_chain_for_rewriting (c, Rewrite (), lrat_chain);
       assert (!lrat_chain.empty ());
     }
+    g->degenerated_gate = Special_Gate::DEGENERATED_AND;
     learn_congruence_unit (-g->lhs);
     return true;
   }
-  if (!internal->lrat)
-    return false;
 
   // captured above
   assert (g->rhs[1] != -g->lhs);
@@ -6437,6 +6394,8 @@ bool Closure::simplify_ite_gate_to_and (Gate *g, size_t idx1, size_t idx2,
   else
     g->degenerated_gate = Special_Gate::NORMAL;
 
+  if (!internal->lrat)
+    return false;
   if (g->lhs == -removed_lit && internal->val (-removed_lit)) {
     LOG ("special case of lhs=-1");
     // 3 = 5 ? 1 : 3 where 3@0 = -1
@@ -6762,8 +6721,7 @@ void Closure::simplify_ite_gate (Gate *g) {
       assert (is_sorted (begin (*g), end (*g),
                          sort_literals_by_var_smaller (internal)));
       check_and_gate_implied (g);
-      Gate *h = find_and_lits (begin (*g), end (*g));
-      if (h) {
+      if (Gate *h = find_and_lits (begin (*g), end (*g)); h) {
         assert (garbage);
         std::vector<LRAT_ID> reasons_lrat, reasons_lrat_back;
         if (internal->lrat) {
@@ -6777,6 +6735,8 @@ void Closure::simplify_ite_gate (Gate *g) {
         remove_gate (git);
         index_gate (g);
         garbage = false;
+        assert (g->degenerated_gate == Special_Gate::DEGENERATED_AND || g->degenerated_gate == Special_Gate::DEGENERATED_AND_LHS_FALSE
+          || g->degenerated_gate == Special_Gate::NORMAL);
         for (auto lit : *g)
           if (lit != cond && lit != then_lit && lit != else_lit) {
             connect_goccs (g, lit);

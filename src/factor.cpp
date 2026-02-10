@@ -394,6 +394,10 @@ Quotient *Internal::xorite_quotient (Factoring &factoring, int first_factor,
     // noccs (other) contains count for (third, other) and (-third, -other).
     // seconds may contain both other and -other.
     for (auto &other : seconds) {
+      if (opts.factorxorite == 0 && other != -third)
+        continue;
+      if (opts.factorxorite == 2 && other == -third)
+        continue;
       if (noccs (other) > matches) {
         matches = noccs (other);
         best_second = other;

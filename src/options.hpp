@@ -132,6 +132,7 @@ OPTION( factorschedule,    0,  0,  3,0,0,1, "schedule (0=occs, 1=queue, 2=heap, 
 OPTION( factorsize,       20,  2,2e9,0,0,1, "clause size limit") \
 OPTION( factorthresh,      7,  0,100,1,0,1, "delay if ticks smaller thresh*clauses") \
 OPTION( factorxor,         1,  0,  1,0,0,1, "factor eliminated xor (and ite) gates (needs factorsize > 2)") \
+OPTION( factorxorite,      1,  0,  2,0,0,1, "factor eliminated ite gates (2 = no xors)") \
 OPTION( factorxorrand,     1,  0,  1,0,0,1, "random tiebreak for factor xorx") \
 OPTION( fastelim,          1,  0,  1,0,1,1, "fast BVE during preprocessing") \
 OPTION( fastelimbound,     8,  1,1e3,1,0,1, "fast BVE bound during preprocessing") \

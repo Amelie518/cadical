@@ -92,10 +92,14 @@ struct Walker_DDFW {
   std::vector<size_t> position_vars_in_broken;
   std::vector<size_t> noccs_vars_in_broken;
 
+  // for sideways jumps, we remember all the literals that have no impact on the overall cost
+  std::vector<int> no_gain_literals;
+
   // the core part: the weights
   std::vector<DDFW_Counter> weight_clause_info;
   // walk occurrences
   std::vector<std::vector<DDFW_Tagged>> woccs;
+
 
   static constexpr double w_0 = 8.0;
 
@@ -188,6 +192,7 @@ struct Walker_DDFW {
   }
 
   std::pair<int,double> find_weight_reducing_variable ();
+  void do_sideways_jump ();
   void transfer_weights ();
   size_t maximum_weight_neighbor (Clause *c);
   size_t random_satisfied_big_weight_clause (double w_0);
@@ -671,6 +676,17 @@ size_t Walker_DDFW::random_satisfied_big_weight_clause (double w_0) {
   return max_clause;
 }
 
+void Walker_DDFW::do_sideways_jump () {
+  assert (!no_gain_literals.empty ());
+  size_t pos = random.pick_int(0, no_gain_literals.size() - 1);
+  int lit = no_gain_literals[pos];
+  walk_ddfw_flip_lit (lit);
+  push_flipped (lit);
+  internal->stats.walk.flips++;
+  internal->stats.walk.broken += broken.size ();
+  ++internal->stats.walk.sideways;
+}
+
 void Walker_DDFW::transfer_weights () {
   START(walktransferweights);
   LOG ("transfering weights");
@@ -800,6 +816,7 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
   int weight_reducing_var = 0;
   double mini_weight_reduction = 0.0;
   int loop_iterations = 0;
+  no_gain_literals.clear ();
   for (auto idx : vars_in_broken) {
     double flip_gain = critical_sat_weight (idx) - critical_unsat_weight (idx);
     LOG ("considering flipping %s gives %.3f", LOGLIT (idx), flip_gain);
@@ -807,6 +824,9 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
       mini_weight_reduction = flip_gain;
       weight_reducing_var = idx;
       ++loop_iterations;
+    }
+    else if (flip_gain == 0) {
+      no_gain_literals.push_back (internal->val (idx) > 0 ? - idx : idx);
     }
   }
   ticks += internal->cache_lines (vars_in_broken.size (), sizeof (int)) + loop_iterations / 64;
@@ -849,7 +869,6 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
 
   PHASE ("walk", stats.walk.count,
          "random walk limit of %" PRId64 " ticks", limit);
-  assert (limit);
 
   PHASE ("walk", stats.walk.count,
          "%zd clauses over %d variables", clauses.size (),
@@ -890,6 +909,7 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
 
   if (!failed) {
 
+    size_t count_true = 0;
     const bool target = opts.warmup ? false : stable || opts.target == 2;
     for (auto idx : vars) {
       if (!active (idx)) {
@@ -1070,13 +1090,8 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
 
       // otherwise, do a sideways flip with low probability
       double perc = walker.random.generate_double ();
-      if (weight_reducing_lit && weight_reduction == 0.0 && perc < sideways_percent) {
-        ++stats.walk.sideways;
-        LOG ("sideways flip of one literal");
-        walker.walk_ddfw_flip_lit (weight_reducing_lit);
-        walker.push_flipped (weight_reducing_lit);
-        stats.walk.flips++;
-        stats.walk.broken += broken;
+      if (!walker.no_gain_literals.empty () && perc < sideways_percent) {
+        walker.do_sideways_jump ();
         continue;
       }
 

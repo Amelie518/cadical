@@ -264,6 +264,8 @@ Quotient *Internal::xorite_quotient (Factoring &factoring, int first_factor,
   if (occs (first_factor).size () < min_match_limit ||
       occs (-first_factor).size () < min_match_limit)
     return 0;
+  if (val (first_factor))
+    return 0;
   // init quotient.
   Quotient *res = new Quotient (first_factor);
   // these are set to 0 for sanity (but not used).

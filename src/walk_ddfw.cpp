@@ -908,8 +908,6 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
   level = 2; // All other non assumed variables assigned at level 2.
 
   if (!failed) {
-
-    size_t count_true = 0;
     const bool target = opts.warmup ? false : stable || opts.target == 2;
     for (auto idx : vars) {
       if (!active (idx)) {

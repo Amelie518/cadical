@@ -411,6 +411,10 @@ Quotient *Internal::xorite_quotient (Factoring &factoring, int first_factor,
         matches = tmp;
         best_second = other;
         best_third = third;
+      } else if (!opts.factorxorrand && tmp == matches && other != -third) {
+        matches = tmp;
+        best_second = other;
+        best_third = third;
       } else if (opts.factorxorrand && tmp == matches) {
         Random random (internal->opts.seed);
         random += stats.factor + other;

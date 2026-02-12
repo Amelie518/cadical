@@ -260,6 +260,11 @@ Quotient *Internal::xorite_quotient (Factoring &factoring, int first_factor,
   LOG ("xorite for %d", first_factor);
   // fast skip if the maximum number of matched clauses is to low
   // factoring.bound is at least -1
+#if 0 // sanity check that noccs are used correctly
+  for (auto &lit : lits) {
+    assert (!noccs (lit));
+  }
+#endif
   const size_t min_match_limit = 5 + factoring.bound;
   if (occs (first_factor).size () < min_match_limit ||
       occs (-first_factor).size () < min_match_limit)
@@ -396,24 +401,25 @@ Quotient *Internal::xorite_quotient (Factoring &factoring, int first_factor,
     // noccs (other) contains count for (third, other) and (-third, -other).
     // seconds may contain both other and -other.
     for (auto &other : seconds) {
+      const uint64_t tmp = noccs (other);
+      noccs (other) = 0;
       if (opts.factorxorite == 0 && other != -third)
         continue;
       if (opts.factorxorite == 2 && other == -third)
         continue;
-      if (noccs (other) > matches) {
-        matches = noccs (other);
+      if (tmp > matches) {
+        matches = tmp;
         best_second = other;
         best_third = third;
-      } else if (opts.factorxorrand && noccs (other) == matches) {
+      } else if (opts.factorxorrand && tmp == matches) {
         Random random (internal->opts.seed);
         random += stats.factor + other;
         if (random.generate_bool ()) {
-          matches = noccs (other);
+          matches = tmp;
           best_second = other;
           best_third = third;
         }
       }
-      noccs (other) = 0;
     }
   }
 
@@ -444,6 +450,7 @@ Quotient *Internal::xorite_quotient (Factoring &factoring, int first_factor,
     if (c->swept || d->swept) {
       q -= 2;
       LOG ("factor decrement matches due to duplicate clause");
+      assert (matches);
       matches -= 1;
       continue;
     }
@@ -460,6 +467,12 @@ Quotient *Internal::xorite_quotient (Factoring &factoring, int first_factor,
     assert (c->swept);
     c->swept = false;
   }
+#if 0 // sanity check that noccs are used correctly
+  for (auto &lit : lits) {
+    assert (!noccs (lit));
+  }
+#endif
+
   assert (res->qlauses.size () == 2 * matches);
   *reduction_ptr = matches - 4;
   assert (!factoring.quotients.xorites);
@@ -1392,7 +1405,7 @@ bool Internal::run_factorization (int64_t limit) {
     const size_t first_count = first_factor (factoring, first);
     // extract XOR matches after the "normal" factors in this loop.
     if (first_count > 1) {
-      for (;;) {
+      for (; opts.factorxor < 2;) {
         unsigned next_count;
         const int next = next_factor (factoring, &next_count);
         if (next == 0)

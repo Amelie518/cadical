@@ -726,15 +726,23 @@ void Walker_DDFW::transfer_weights () {
     DDFW_Counter &robbed = clause_info (robbed_pos);
     assert (robbed_pos != c.counter_pos);
 
+    double coeff_a;
+    double coeff_c ;
+    if (robbed.weight == w_0) {
+      coeff_a = 1; // initpct
+      coeff_c = 0;
+    } else {
+      coeff_a = 0.075; // currpct
+      coeff_c = 0.167 * w_0; // baspct
+    }
     // this is the linear transfer function from the paper. The original ddfw
     // implementation had actually coeff_a == 0 and `coeff_c == robbed.weight >
     // w_0 ? c_big : c_small` with the inverted small/big !
     //
     // The idea of the condition `robbed.weight > w_0` is to initially transfer
     // more weights and later less.
+#if 0
     const bool weight_larger = (robbed.weight > w_0);
-    double coeff_a;
-    double coeff_c ;
     switch (internal->opts.walkddfwstrat) {
       case 0: // lw-itl
         coeff_a = weight_larger ? 0.1 : 0.05;
@@ -753,6 +761,7 @@ void Walker_DDFW::transfer_weights () {
         coeff_c = weight_larger ? c_big : c_small;
         break;
     }
+#endif
     double weight_difference = robbed.weight * coeff_a + coeff_c;
     robber.weight += weight_difference;
     robbed.weight -= weight_difference;
@@ -850,9 +859,11 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
       last_searched_vars_in_broken = std::distance (begin, it);
       assert (begin <= it);
     }
+#if 0
     else if (flip_gain == 0) {
       no_gain_literals.push_back (internal->val (idx) > 0 ? - idx : idx);
     }
+#endif
   }
   for (auto it = vars_in_broken.begin (); it != mid; ++it) {
     const int idx = *it;
@@ -865,9 +876,11 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
       last_searched_vars_in_broken = std::distance (begin, it);
       assert (begin <= it);
     }
+#if 0
     else if (flip_gain == 0) {
       no_gain_literals.push_back (internal->val (idx) > 0 ? - idx : idx);
     }
+#endif
   }
   ticks += internal->cache_lines (vars_in_broken.size (), sizeof (int)) + loop_iterations / 64;
   if (weight_reducing_var && internal->val (weight_reducing_var) > 0)
@@ -1125,14 +1138,14 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
         stats.walk.broken += broken;
         continue;
       }
-
+#if 0
       // otherwise, do a sideways flip with low probability
       double perc = walker.random.generate_double ();
       if (!walker.no_gain_literals.empty () && perc < sideways_percent) {
         walker.do_sideways_jump ();
         continue;
       }
-
+#endif
       // transfer weights
       walker.transfer_weights ();
     }

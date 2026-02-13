@@ -211,13 +211,14 @@ struct Walker_DDFW {
       LOG ("cannot mark %s as uvar", LOGLIT (lit));
       return;
     }
-    if (!noccs_vars_in_broken[idx]) {
+    if (!uvar_count (lit)) {
       position_vars_in_broken[idx] = vars_in_broken.size ();
       vars_in_broken.push_back(idx);
     }
-    ++noccs_vars_in_broken[idx];
-    LOG ("marking %s as uvar, found %zd times", LOGLIT (lit), noccs_vars_in_broken[idx]);
+    ++uvar_count (lit);
+    LOG ("marking %s as uvar, found %zd times", LOGLIT (lit), uvar_count (lit));
   }
+
   void remove_uvar (int lit) {
     if (internal->var (lit).level == 1)
       return;
@@ -225,13 +226,14 @@ struct Walker_DDFW {
     if (uvar_count (lit) == 1) {
       size_t pos = position_vars_in_broken[internal->vidx (lit)];
       assert (pos < vars_in_broken.size ());
+      assert (vars_in_broken[pos] == lit);
       vars_in_broken[pos] = vars_in_broken.back ();
       int old_idx = vars_in_broken[pos];
       vars_in_broken.pop_back();
       position_vars_in_broken[old_idx] = pos;
     }
     --uvar_count (lit);
-    LOG ("unmarking %s as uvar once, remaining %zd times", LOGLIT (lit), noccs_vars_in_broken[internal->vidx (lit)]);
+    LOG ("unmarking %s as uvar once, remaining %zd times", LOGLIT (lit), uvar_count (lit));
   }
 
   // Finds the variable that only reduces the most number of unsatisfied
@@ -669,8 +671,8 @@ void Walker_DDFW::break_clauses (int lit) {
     LOG (d.always_clause, "new broken clause with weight %f", d.weight);
     critical_sat_weight(old_critical) -= d.weight;
     d.pos = this->broken.size ();
+    this->broken.push_back (w);
     if (d.binary) {
-      this->broken.push_back (w);
       for (auto lit : {d.binary_clause.lit, d.binary_clause.other}) {
         add_uvar(lit);
         critical_unsat_weight(lit) += d.weight;
@@ -678,7 +680,6 @@ void Walker_DDFW::break_clauses (int lit) {
     }
     else {
       ++ticks;
-      this->broken.push_back (w);
       for (auto lit : *d.clause) {
         add_uvar(lit);
         critical_unsat_weight(lit) += d.weight;
@@ -733,6 +734,8 @@ size_t Walker_DDFW::maximum_weight_neighbor (const DDFW_Counter& c) {
 #endif
         if (!neighbor.count)
           continue;
+        if (neighbor.weight <= w_0)
+          continue;
         if (max_clause == invalid_position || neighbor.weight > max_weight)
           max_clause = c.counter_pos;
       }
@@ -750,6 +753,8 @@ size_t Walker_DDFW::maximum_weight_neighbor (const DDFW_Counter& c) {
         assert (neighbor.always_clause);
 #endif
         if (!neighbor.count)
+          continue;
+        if (neighbor.weight <= w_0)
           continue;
         if (max_clause == invalid_position || neighbor.weight > max_weight)
           max_clause = c.counter_pos;
@@ -795,7 +800,7 @@ void Walker_DDFW::transfer_weights () {
   LOG ("transfering weights");
   // In TaSSAT, the value is different in each thread by taking a value between
   // 10% + thread_id / number_of_threads.
-  const double cspt = 0.1;   // probability to choose random satisfied clause
+  const double cspt = internal->opts.walkddfwstrat != 3 ? 0.1 : 0.01;   // probability to choose random satisfied clause
   const double c_big = 2.0;   // big weight increase factor
   const double c_small = 1.0; // small weight increase factor
 
@@ -831,13 +836,12 @@ void Walker_DDFW::transfer_weights () {
       coeff_a = 0.075; // currpct in the TaSSaT paper
       coeff_c = 0.175 * w_0; // baspct in the TaSSaT paper
     }
-#if 0
-// this is the linear transfer function from the paper. The original ddfw
-// implementation had actually coeff_a == 0 and `coeff_c == robbed.weight >
-// w_0 ? c_big : c_small` with the inverted small/big !
-//
-// The idea of the condition `robbed.weight > w_0` is to initially transfer
-// more weights and later less.
+    // this is the linear transfer function from the paper. The original ddfw
+    // implementation had actually coeff_a == 0 and `coeff_c == robbed.weight >
+    // w_0 ? c_big : c_small` with the inverted small/big !
+    //
+    // The idea of the condition `robbed.weight > w_0` is to initially transfer
+    // more weights and later less.
     const bool weight_larger = (robbed.weight > w_0);
     switch (internal->opts.walkddfwstrat) {
       case 0: // lw-itl
@@ -852,12 +856,22 @@ void Walker_DDFW::transfer_weights () {
         coeff_a = weight_larger ? 0.05 : 0.10;
         coeff_c = weight_larger ? c_small : c_big;
         break;
-      default: // original ddfw
+      case 3: // original ddfw
         coeff_a = 0;
         coeff_c = weight_larger ? c_big : c_small;
         break;
+      case 4:// tassat
+        if (robbed.weight == w_0) {
+       	  coeff_a = 1; // initpct in the TaSSaT paper
+       	  coeff_c = 0; // simplified to 0 in the TaSSAT paper
+       	} else {
+       	  coeff_a = 0.075; // currpct in the TaSSaT paper
+       	  coeff_c = 0.175 * w_0; // baspct in the TaSSaT paper
+       	}
+       	break;
+      default:
+        assert (false);
     }
-#endif
     double weight_difference = robbed.weight * coeff_a + coeff_c;
     robber.weight += weight_difference;
     robbed.weight -= weight_difference;
@@ -956,8 +970,9 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
   const auto mid = last_searched_vars_in_broken < vars_in_broken.size () ? vars_in_broken.begin () + last_searched_vars_in_broken : vars_in_broken.end ();
   for (auto it = mid; it != end; ++it) {
     const int idx = *it;
-    double flip_gain = critical_sat_weight (idx) - critical_unsat_weight (idx);
-    LOG ("considering flipping %s gives %.3f", LOGLIT (idx), flip_gain);
+    const int lit = internal->val (idx) ? -idx : idx;
+    double flip_gain = critical_sat_weight (lit) - critical_unsat_weight (lit);
+    LOG ("considering flipping %s gives %.3f", LOGLIT (lit), flip_gain);
     if (flip_gain < mini_weight_reduction) {
       mini_weight_reduction = flip_gain;
       weight_reducing_var = idx;
@@ -973,8 +988,9 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
   }
   for (auto it = vars_in_broken.begin (); it != mid; ++it) {
     const int idx = *it;
-    double flip_gain = critical_sat_weight (idx) - critical_unsat_weight (idx);
-    LOG ("considering flipping %s gives %.3f", LOGLIT (idx), flip_gain);
+    const int lit = internal->val (idx) ? -idx : idx;
+    double flip_gain = critical_sat_weight (lit) - critical_unsat_weight (lit);
+    LOG ("considering flipping %s gives %.3f", LOGLIT (lit), flip_gain);
     if (flip_gain < mini_weight_reduction) {
       mini_weight_reduction = flip_gain;
       weight_reducing_var = idx;

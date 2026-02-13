@@ -10,7 +10,11 @@ namespace CaDiCaL {
 
 // Random walk local search based on yallin ideas, as simplified by our master
 // students Johannes Gröber and Jakob Peterson and Andris Rico, but adapted to
-// the full occurrence list that we need in CaDiCaL.
+// the full occurrence list that we need in CaDiCaL. After that, we simplified
+// the code following the follow-up TaSSAT work [Chowdhury , Codel , and Heule,
+// TACAS'24], which is a just some simplification of the original version (fewer
+// constants and removing sideflips). Whether renaming their solver from Yal-lin
+// to TaSSAT was worth it is left as decision to our reader.
 //
 // The implementation requires to give clauses a weight and store various
 // information. We put those into a separate vector und rely on the indices
@@ -702,6 +706,8 @@ void Walker_DDFW::do_sideways_jump () {
 void Walker_DDFW::transfer_weights () {
   START(walktransferweights);
   LOG ("transfering weights");
+  // In TaSSAT, the value is different in each thread by taking a value between
+  // 10% + thread_id / number_of_threads.
   const double cspt = 0.1;   // probability to choose random satisfied clause
   const double c_big = 2.0;   // big weight increase factor
   const double c_small = 1.0; // small weight increase factor
@@ -726,22 +732,23 @@ void Walker_DDFW::transfer_weights () {
     DDFW_Counter &robbed = clause_info (robbed_pos);
     assert (robbed_pos != c.counter_pos);
 
+    // coefficients for the weight transfer.
     double coeff_a;
     double coeff_c ;
     if (robbed.weight == w_0) {
-      coeff_a = 1; // initpct
-      coeff_c = 0;
+      coeff_a = 1; // initpct in the TaSSaT paper
+      coeff_c = 0; // simplified to 0 in the TaSSAT paper
     } else {
-      coeff_a = 0.075; // currpct
-      coeff_c = 0.167 * w_0; // baspct
+      coeff_a = 0.075; // currpct in the TaSSaT paper
+      coeff_c = 0.175 * w_0; // baspct in the TaSSaT paper
     }
-    // this is the linear transfer function from the paper. The original ddfw
-    // implementation had actually coeff_a == 0 and `coeff_c == robbed.weight >
-    // w_0 ? c_big : c_small` with the inverted small/big !
-    //
-    // The idea of the condition `robbed.weight > w_0` is to initially transfer
-    // more weights and later less.
 #if 0
+// this is the linear transfer function from the paper. The original ddfw
+// implementation had actually coeff_a == 0 and `coeff_c == robbed.weight >
+// w_0 ? c_big : c_small` with the inverted small/big !
+//
+// The idea of the condition `robbed.weight > w_0` is to initially transfer
+// more weights and later less.
     const bool weight_larger = (robbed.weight > w_0);
     switch (internal->opts.walkddfwstrat) {
       case 0: // lw-itl

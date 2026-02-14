@@ -829,13 +829,6 @@ void Walker_DDFW::transfer_weights () {
     // coefficients for the weight transfer.
     double coeff_a;
     double coeff_c ;
-    if (robbed.weight == w_0) {
-      coeff_a = 1; // initpct in the TaSSaT paper
-      coeff_c = 0; // simplified to 0 in the TaSSAT paper
-    } else {
-      coeff_a = 0.075; // currpct in the TaSSaT paper
-      coeff_c = 0.175 * w_0; // baspct in the TaSSaT paper
-    }
     // this is the linear transfer function from the paper. The original ddfw
     // implementation had actually coeff_a == 0 and `coeff_c == robbed.weight >
     // w_0 ? c_big : c_small` with the inverted small/big !

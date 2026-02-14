@@ -259,7 +259,7 @@ OPTION( transredmineff,    0,  0,2e9,1,0,1, "minimum efficiency") \
 OPTION( varindexorder,     1,  0,  1,0,0,1, "use literals name given as (DIMACS) input") \
 OPTION( varkeepname,       1,  0,  1,0,0,1, "attempt to use the same internal and external name (debug purpose only)") \
 OPTION( varprioritizefirst,1,  0,  1,0,0,1, "reverse variable ordering") \
-OPTION( varprioritizeswap, 0,  0,  1,0,0,1, "reverse variable ordering for VMTF only (compared to VSIDS)") \
+OPTION( varprioritizeswap, 0,  0,  1,0,0,1, "reverse VMTF variable ordering (reverse of varindexorder)") \
 QUTOPT( verbose,           0,  0,  4,0,0,0, "more verbose messages") \
 OPTION( veripb,            0,  0,  4,0,0,1, "odd=check-deletions, >2 drat") \
 OPTION( vivify,            1,  0,  1,0,1,1, "vivification") \

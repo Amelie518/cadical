@@ -22,10 +22,6 @@ namespace CaDiCaL {
 struct Walker {
 
   Internal *internal;
-
-  // for efficiency, storing the model each time an improvement is
-  // found is too costly. Instead we store some of the flips since
-  // last time and the position of the best model found so far.
   Random random;                 // local random number generator
   int64_t ticks;                 // ticks to approximate run time
   int64_t limit;                 // limit on number of propagations
@@ -42,10 +38,24 @@ struct Walker {
 #ifndef NDEBUG
   std::vector<signed char> current_best_model; // best model found so far
 #endif
+
   Walker (Internal *, int64_t limit);
   void populate_table (double size);
+
+
+  // for efficiency, storing the model each time an improvement is
+  // found is too costly. Instead we store some of the flips since
+  // last time and the position of the best model found so far.
+  //
+  // Once that buffer is full, we save the last best assignment. This is
+  // particularly important at the beginning where every or nearly every flip
+  // improves the current assignment.
+
+  // Push the literal on the buffer of flipped literals
   void push_flipped (int flipped);
+  // save the best assignment found so far, if any was found
   void save_walker_trail (bool);
+  // export the best model from walk to the main solver
   void save_final_minimum (size_t old_minimum);
 };
 

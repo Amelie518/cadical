@@ -120,6 +120,10 @@ struct DDFW_Counter {
   DDFW_Counter (DDFW_Counter&& d) = default;
   ~DDFW_Counter () = default;
   DDFW_Counter &operator= (const DDFW_Counter &) = default;
+  inline bool satisfied () const {
+    assert (count >= 0);
+    return count;
+  }
 };
 
 struct Walker_DDFW {
@@ -156,7 +160,8 @@ struct Walker_DDFW {
   std::vector<std::vector<DDFW_Tagged>> woccs;
 
 
-  static constexpr double w_0 = 8.0;
+  // yal-lin uses 8.0.
+  static constexpr double base_weight = 100.0;
 
   using TOccs = std::vector<DDFW_Tagged>;
   TOccs &occs (int lit) {
@@ -695,7 +700,7 @@ void Walker_DDFW::walk_ddfw_flip_lit (int lit) {
 }
 
 /*------------------------------------------------------------------------*/
-
+// babywalk does not filter out here that the weights are <= 0.
 position_type Walker_DDFW::satisfied_maximum_weight_neighbor (const DDFW_Counter& c) {
   LOG (c.always_clause, "searching for maximum weight neighbor of");
   size_t max_clause = invalid_position;
@@ -710,7 +715,7 @@ position_type Walker_DDFW::satisfied_maximum_weight_neighbor (const DDFW_Counter
 #if defined (LOGGING)
         assert (neighbor.always_clause);
 #endif
-        if (!neighbor.count)
+        if (!neighbor.satisfied ())
           continue;
 #if 0
         if (neighbor.weight <= w_0)
@@ -732,7 +737,7 @@ position_type Walker_DDFW::satisfied_maximum_weight_neighbor (const DDFW_Counter
 #if defined (LOGGING)
         assert (neighbor.always_clause);
 #endif
-        if (!neighbor.count)
+        if (!neighbor.satisfied ())
           continue;
 #if 0
         if (neighbor.weight <= w_0)
@@ -752,7 +757,7 @@ position_type Walker_DDFW::random_satisfied_big_weight_clause (double w_0) {
     size_t pos = random.pick_int(0, weight_clause_info.size ()-1);
     assert (pos < weight_clause_info.size ());
     const DDFW_Counter &c = clause_info (pos);
-    if (!c.count)
+    if (!c.satisfied ())
       continue;
     LOG ("searching at position %zd with weight %f < %f = %d", pos, c.weight, w_0, c.weight < w_0);
     if (c.weight < w_0)
@@ -797,9 +802,8 @@ void Walker_DDFW::transfer_weights () {
 #endif
     size_t robbed_pos = satisfied_maximum_weight_neighbor (robber);
     const double p = random.generate_double();
-    // TODO: the code does not have this condition on weights
-    if (robbed_pos == invalid_position || /*clause_info (robbed_pos).weight < w_0 ||*/ p < cspt)
-      robbed_pos = random_satisfied_big_weight_clause (w_0);
+    if (robbed_pos == invalid_position || p <= cspt)
+      robbed_pos = random_satisfied_big_weight_clause (base_weight);
     // TODO does this really trigger?
     if (robbed_pos == invalid_position)
       continue;
@@ -816,7 +820,7 @@ void Walker_DDFW::transfer_weights () {
     //
     // The idea of the condition `robbed.weight > w_0` is to initially transfer
     // more weights and later less.
-    const bool weight_larger = (robbed.weight > w_0);
+    const bool weight_larger = (robbed.weight > base_weight);
     switch (internal->opts.walkddfwstrat) {
       case 0: // lw-itl
         coeff_a = weight_larger ? 0.1 : 0.05;
@@ -836,7 +840,7 @@ void Walker_DDFW::transfer_weights () {
         break;
       default:// tassat
         assert (internal->opts.walkddfwstrat == 4);
-        if (robbed.weight == w_0) {
+        if (robbed.weight == base_weight) {
        	  coeff_a = 1; // initpct in the TaSSaT paper
        	  coeff_c = 0; // simplified to 0 in the TaSSAT paper
        	} else {
@@ -1039,11 +1043,11 @@ bool Walker_DDFW::import_clauses (bool &failed) {
 
      assert (satisfied <= (size_t)c->size);
      position_type pos = weight_clause_info.size ();
-     if (true || (size_t)pos != weight_clause_info.size ()) {
+     if ((size_t)pos != weight_clause_info.size ()) {
        MSG ("walk cannot go over that many clauses");
        return false;
      }
-     DDFW_Counter cw = DDFW_Counter (satisfied, invalid_position, critical, c, Walker_DDFW::w_0);
+     DDFW_Counter cw = DDFW_Counter (satisfied, invalid_position, critical, c, Walker_DDFW::base_weight);
      LOG ("found %zd clauses so far, it has %d satisfied literals", pos, satisfied);
      weight_clause_info.push_back (cw);
 #ifdef LOGGING
@@ -1096,7 +1100,7 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
 
   std::vector<int> propagated;
   bool failed = false; // Inconsistent assumptions?
-  bool out_of_memory = false;
+  bool sucessfully_imported = false;
   assert (!private_steps);
   int res = decide_and_propagate_all_assumptions (propagated);
   if (res) {
@@ -1187,8 +1191,8 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
     LOG ("watching satisfied and registering broken clauses");
   }
 
-  out_of_memory = walker.import_clauses (failed);
-  if (out_of_memory) {
+  sucessfully_imported = walker.import_clauses (failed);
+  if (!sucessfully_imported) {
     res = 0;
   }
   else if (!failed) {

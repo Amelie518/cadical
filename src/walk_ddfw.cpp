@@ -6,6 +6,7 @@
 
 namespace CaDiCaL {
 
+
 /*------------------------------------------------------------------------*/
 
 // Random walk local search based on yallin ideas, as simplified by our master
@@ -33,13 +34,28 @@ namespace CaDiCaL {
 //
 // For ticks, we assume that the main array containing all clauses is
 // always in cache.
+
+// We experimented with different sizes for positions, namely size_t and
+// uint32_t, but observed on `stone-width3chain-nmarkers-11_shuffled` an
+// improvement from 81.2K flips/s to 97.5 flips per second. Tassat is more
+// optimized since it goes as far as using char/short/unsigned int depending on
+// the size. On a small problem like `eq.atree.braun.9.unsat.cnf`, Tassat
+// reaches 4M flips per second, while CaDiCaL reaches only 20K flips per second.
+// That being said, the number of flips per second is highly dependent on the
+// number of literals, which should decrease slowly during solving.
+//
+// We experimented with smaller values but did not a see a benefit (although
+// CaDiCaL is using 5 times as much memory as Tassat).
+using position_type = uint32_t;
+
+// This is the core structure representing positions in the array of values.
 struct DDFW_Tagged {
-  size_t counter_pos;
+  position_type counter_pos;
 #ifndef NDEBUG
   Clause *c;
 #endif
   explicit DDFW_Tagged () { assert (false); }
-  explicit DDFW_Tagged (Clause *d, size_t pos)
+  explicit DDFW_Tagged (Clause *d, position_type pos)
       : counter_pos (pos) {
 #ifndef NDEBUG
     c = d;
@@ -57,11 +73,11 @@ struct DDFW_Counter {
     Clause *clause; // pointer to the clause itself
     struct {int lit, other;} binary_clause;
   };
-  double weight;
+  float weight;
   unsigned critical_var; // critical literal if any
   bool binary : 1;
   uint32_t count : 31; // number of true literals
-  size_t pos;   // pos in the broken clauses
+  position_type pos;   // pos in the broken clauses
 #if defined (LOGGING) || !defined (NDEBUG)
   //only useful for debugging or logging to check that the binary clause is correct.
   Clause *always_clause;
@@ -83,11 +99,11 @@ struct DDFW_Counter {
         && always_clause->literals[1] == binary_clause.other));
 #endif
   }
-  explicit DDFW_Counter (unsigned c, size_t p, unsigned crit, Clause *d, double w)
+  explicit DDFW_Counter (unsigned c, position_type p, unsigned crit, Clause *d, double w)
   : clause (d), weight (w), critical_var (crit), count (c), pos (p){
     initialize_binary(d);
   }
-  explicit DDFW_Counter (unsigned c, size_t p, Clause *d, double w)
+  explicit DDFW_Counter (unsigned c, position_type p, Clause *d, double w)
   : clause (d), weight (w), critical_var (0), count (c), pos (p){
     initialize_binary(d);
   }
@@ -107,7 +123,7 @@ struct DDFW_Counter {
 };
 
 struct Walker_DDFW {
-  static constexpr size_t invalid_position = UINT32_MAX;
+  static constexpr position_type invalid_position = (-1);
   Internal *internal;
 
   // for efficiency, storing the model each time an improvement is
@@ -127,8 +143,8 @@ struct Walker_DDFW {
 
   // variables appearing in a broken clause, called uvars in the paper
   std::vector<int> vars_in_broken;
-  std::vector<size_t> position_vars_in_broken;
-  std::vector<size_t> noccs_vars_in_broken;
+  std::vector<uint32_t> position_vars_in_broken;
+  std::vector<uint32_t> noccs_vars_in_broken;
   size_t last_searched_vars_in_broken;
 
   // for sideways jumps, we remember all the literals that have no impact on the overall cost
@@ -169,25 +185,25 @@ struct Walker_DDFW {
     assert ((size_t)internal->vidx (lit) < var_unsat_weights.size());
     return var_unsat_weights[internal->vidx (lit)];
   }
-  const size_t &uvar_count (int lit) const {
+  const uint32_t &uvar_count (int lit) const {
     assert ((size_t)internal->vidx (lit) < noccs_vars_in_broken.size());
     return noccs_vars_in_broken[internal->vidx (lit)];
   }
-  size_t &uvar_count (int lit) {
+  uint32_t &uvar_count (int lit) {
     assert ((size_t)internal->vidx (lit) < noccs_vars_in_broken.size());
     return noccs_vars_in_broken[internal->vidx (lit)];
   }
 
-  DDFW_Counter &clause_info (size_t pos) {
+  DDFW_Counter &clause_info (position_type pos) {
     assert (pos < weight_clause_info.size ());
     return weight_clause_info[pos];
   }
 
-  const DDFW_Counter &clause_info (size_t pos) const {
+  const DDFW_Counter &clause_info (position_type pos) const {
     assert (pos < weight_clause_info.size ());
     return weight_clause_info[pos];
   }
-  void connect_clause (int lit, Clause *clause, size_t pos) {
+  void connect_clause (int lit, Clause *clause, position_type pos) {
     assert (pos < weight_clause_info.size ());
 #ifdef LOGGING
     assert (clause_info (pos).always_clause == clause);
@@ -197,7 +213,7 @@ struct Walker_DDFW {
          lit, occs (lit).size ());
     occs (lit).push_back (DDFW_Tagged (clause, pos));
   }
-  void connect_clause (Clause *clause, size_t pos) {
+  void connect_clause (Clause *clause, position_type pos) {
     assert (pos < weight_clause_info.size ());
 #ifdef LOGGING
     assert (clause_info (pos).always_clause == clause);
@@ -226,7 +242,7 @@ struct Walker_DDFW {
       return;
     assert (uvar_count (lit) >= 1);
     if (uvar_count (lit) == 1) {
-      size_t pos = position_vars_in_broken[internal->vidx (lit)];
+      position_type pos = position_vars_in_broken[internal->vidx (lit)];
       assert (pos < vars_in_broken.size ());
       assert (vars_in_broken[pos] == lit);
       vars_in_broken[pos] = vars_in_broken.back ();
@@ -249,11 +265,11 @@ struct Walker_DDFW {
   // increase the focuse on the latter, the hard-to-satisfy clauses
   void transfer_weights ();
   // returns the clause in the neighborhood with the maximum weight
-  size_t satisfied_maximum_weight_neighbor (const DDFW_Counter& c);
+  position_type satisfied_maximum_weight_neighbor (const DDFW_Counter& c);
   // returns any satisfied clause with weight >= w_0
-  size_t random_satisfied_big_weight_clause (double w_0);
-  void update_unsat_weights (size_t pos, double);
-  void update_sat_weights (size_t pos, double);
+  position_type random_satisfied_big_weight_clause (double w_0);
+  void update_unsat_weights (position_type pos, double);
+  void update_sat_weights (position_type pos, double);
 
 
   void check_occs () const {
@@ -374,6 +390,9 @@ struct Walker_DDFW {
   void make_clauses (int lit);
   void break_clauses (int lit);
   void walk_ddfw_flip_lit (int lit);
+
+  // sets up the occurrence lists, returns false if run out of memory
+  inline bool import_clauses (bool &failed);
 };
 
 // Initialize the data structures for one local search round.
@@ -530,7 +549,7 @@ void Walker_DDFW::make_clause (DDFW_Tagged t, int lit) {
   assert (last.counter_pos < weight_clause_info.size ());
   assert (clause_info (last.counter_pos).always_clause == last.c);
 #endif
-  size_t pos = d.pos;
+  position_type pos = d.pos;
   assert (pos < broken.size ());
   broken[pos] = last;
   // the order is important
@@ -610,7 +629,7 @@ void Walker_DDFW::break_clauses (int lit) {
   LOG ("trying to break %zd clauses", ws.size ());
 
   for (const auto &w : ws) {
-    size_t pos = w.counter_pos;
+    position_type pos = w.counter_pos;
     assert (pos < weight_clause_info.size ());
     DDFW_Counter &d = clause_info (pos);
     const int old_critical = d.critical_var;
@@ -677,7 +696,7 @@ void Walker_DDFW::walk_ddfw_flip_lit (int lit) {
 
 /*------------------------------------------------------------------------*/
 
-size_t Walker_DDFW::satisfied_maximum_weight_neighbor (const DDFW_Counter& c) {
+position_type Walker_DDFW::satisfied_maximum_weight_neighbor (const DDFW_Counter& c) {
   LOG (c.always_clause, "searching for maximum weight neighbor of");
   size_t max_clause = invalid_position;
   double max_weight = 0;
@@ -727,7 +746,7 @@ size_t Walker_DDFW::satisfied_maximum_weight_neighbor (const DDFW_Counter& c) {
   return max_clause;
 }
 
-size_t Walker_DDFW::random_satisfied_big_weight_clause (double w_0) {
+position_type Walker_DDFW::random_satisfied_big_weight_clause (double w_0) {
   size_t max_clause = invalid_position;
   while (max_clause == invalid_position) {
     size_t pos = random.pick_int(0, weight_clause_info.size ()-1);
@@ -838,7 +857,7 @@ void Walker_DDFW::transfer_weights () {
   STOP(walktransferweights);
 }
 
-void Walker_DDFW::update_unsat_weights (size_t pos, double weight_difference) {
+void Walker_DDFW::update_unsat_weights (position_type pos, double weight_difference) {
   assert (pos < weight_clause_info.size ());
   assert (!clause_info (pos).count);
   const auto w = clause_info (pos);
@@ -854,7 +873,7 @@ void Walker_DDFW::update_unsat_weights (size_t pos, double weight_difference) {
     }
   }
 }
-void Walker_DDFW::update_sat_weights (size_t pos, double weight_difference) {
+void Walker_DDFW::update_sat_weights (position_type pos, double weight_difference) {
   assert (pos < weight_clause_info.size ());
   assert (clause_info (pos).count);
   if (clause_info (pos).count != 1)
@@ -966,12 +985,118 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
 }
 /*------------------------------------------------------------------------*/
 
+bool Walker_DDFW::import_clauses (bool &failed) {
+#ifdef LOGGING
+   int64_t watched = 0;
+#endif
+   var_critical_sat_weights.resize (internal->max_var+1, 0);
+   var_unsat_weights.resize (internal->max_var+1, 0);
+   noccs_vars_in_broken.resize (internal->max_var+1, 0);
+   noccs_vars_in_broken.resize (internal->max_var+1, 0);
+   const size_t i = invalid_position; // I get a compilation error otherwise
+   position_vars_in_broken.resize (internal->max_var+1, i);
+
+   for (const auto c : internal->clauses) {
+     if (c->garbage)
+       continue;
+     if (c->redundant) {
+       if (!internal->opts.walkredundant)
+         continue;
+       if (!internal->likely_to_be_kept_clause (c))
+         continue;
+     }
+     LOG (c, "checking clause");
+     bool satisfiable = false; // contains not only assumptions
+     unsigned satisfied = 0;        // clause satisfied?
+
+     int *lits = c->literals;
+     const int size = c->size;
+     unsigned critical = 0;
+
+     // Move to front satisfied literals and determine whether there
+     // is at least one (non-assumed) literal that can be flipped.
+     //
+     for (int i = 0; i < size; i++) {
+       const int lit = lits[i];
+       assert (internal->active (lit)); // Due to garbage collection.
+       if (internal->val (lit) > 0) {
+         critical ^= internal->vidx (lit);
+         swap (lits[satisfied], lits[i]);
+         if (!satisfied++)
+           LOG ("first satisfying literal %d", lit);
+       } else if (!satisfiable && internal->var (lit).level > 1) {
+         LOG ("non-assumption potentially satisfying literal %d", lit);
+         satisfiable = true;
+       }
+     }
+
+     if (!satisfied && !satisfiable) {
+       LOG (c, "due to assumptions unsatisfiable");
+       LOG ("stopping local search since assumptions falsify a clause");
+       failed = true;
+       break;
+     }
+
+     assert (satisfied <= (size_t)c->size);
+     position_type pos = weight_clause_info.size ();
+     if (true || (size_t)pos != weight_clause_info.size ()) {
+       MSG ("walk cannot go over that many clauses");
+       return false;
+     }
+     DDFW_Counter cw = DDFW_Counter (satisfied, invalid_position, critical, c, Walker_DDFW::w_0);
+     LOG ("found %zd clauses so far, it has %d satisfied literals", pos, satisfied);
+     weight_clause_info.push_back (cw);
+#ifdef LOGGING
+     assert (weight_clause_info.size () == pos + 1);
+     assert (pos == watched + broken.size ());
+     assert (weight_clause_info[pos].count <= (size_t)c->size);
+#endif
+     connect_clause (c, pos);
+
+     if (!satisfied) {
+       assert (satisfiable); // at least one non-assumed variable ...
+       LOG (c, "broken");
+       assert (pos < weight_clause_info.size ());
+       clause_info(pos).pos = broken.size ();
+       broken.push_back (DDFW_Tagged (c, pos));
+       ++ticks;
+       for (auto lit : *c) {
+         critical_unsat_weight (lit) += cw.weight;
+         add_uvar (lit);
+       }
+     } else if (satisfied == 1) {
+       critical_sat_weight (critical) += cw.weight;
+#ifdef LOGGING
+       watched++; // to be able to compare the number with walk
+#endif
+     }
+     else {
+#ifdef LOGGING
+       watched++; // to be able to compare the number with walk
+#endif
+     }
+   }
+#ifdef LOGGING
+   if (!failed) {
+     size_t broken = this->broken.size ();
+     size_t total = watched + broken;
+     LOG ("watching %" PRId64 " clauses %.0f%% "
+          "out of %zd (watched and broken)",
+          watched, percent (watched, total), total);
+   }
+#endif
+  return true;
+}
+
+/*------------------------------------------------------------------------*/
+
 int Internal::walk_ddfw_round (int64_t limit, bool prev) {
 
   stats.walk.count++;
 
   std::vector<int> propagated;
   bool failed = false; // Inconsistent assumptions?
+  bool out_of_memory = false;
   assert (!private_steps);
   int res = decide_and_propagate_all_assumptions (propagated);
   if (res) {
@@ -1060,104 +1185,13 @@ int Internal::walk_ddfw_round (int64_t limit, bool prev) {
     }
 
     LOG ("watching satisfied and registering broken clauses");
-#ifdef LOGGING
-    int64_t watched = 0;
-#endif
-    walker.var_critical_sat_weights.resize (internal->max_var+1, 0);
-    walker.var_unsat_weights.resize (internal->max_var+1, 0);
-    walker.noccs_vars_in_broken.resize (internal->max_var+1, 0);
-    walker.noccs_vars_in_broken.resize (internal->max_var+1, 0);
-    const size_t i = walker.invalid_position; // I get a compilation error otherwise
-    walker.position_vars_in_broken.resize (internal->max_var+1, i);
-
-    for (const auto c : clauses) {
-      if (c->garbage)
-        continue;
-      if (c->redundant) {
-        if (!opts.walkredundant)
-          continue;
-        if (!likely_to_be_kept_clause (c))
-          continue;
-      }
-      LOG (c, "checking clause");
-      bool satisfiable = false; // contains not only assumptions
-      unsigned satisfied = 0;        // clause satisfied?
-
-      int *lits = c->literals;
-      const int size = c->size;
-      unsigned critical = 0;
-
-      // Move to front satisfied literals and determine whether there
-      // is at least one (non-assumed) literal that can be flipped.
-      //
-      for (int i = 0; i < size; i++) {
-        const int lit = lits[i];
-        assert (active (lit)); // Due to garbage collection.
-        if (val (lit) > 0) {
-          critical ^= internal->vidx (lit);
-          swap (lits[satisfied], lits[i]);
-          if (!satisfied++)
-            LOG ("first satisfying literal %d", lit);
-        } else if (!satisfiable && var (lit).level > 1) {
-          LOG ("non-assumption potentially satisfying literal %d", lit);
-          satisfiable = true;
-        }
-      }
-
-      if (!satisfied && !satisfiable) {
-        LOG (c, "due to assumptions unsatisfiable");
-        LOG ("stopping local search since assumptions falsify a clause");
-        failed = true;
-        break;
-      }
-
-      assert (satisfied <= (size_t)c->size);
-      size_t pos = walker.weight_clause_info.size ();
-      DDFW_Counter cw = DDFW_Counter (satisfied, walker.invalid_position, critical, c, Walker_DDFW::w_0);
-      LOG ("found %zd clauses so far, it has %d satisfied literals", pos, satisfied);
-      walker.weight_clause_info.push_back (cw);
-#ifdef LOGGING
-      assert (walker.weight_clause_info.size () == pos + 1);
-      assert (pos == watched + walker.broken.size ());
-      assert (walker.weight_clause_info[pos].count <= (size_t)c->size);
-#endif
-      walker.connect_clause (c, pos);
-
-      if (!satisfied) {
-        assert (satisfiable); // at least one non-assumed variable ...
-        LOG (c, "broken");
-        assert (pos < walker.weight_clause_info.size ());
-        walker.clause_info(pos).pos = walker.broken.size ();
-        walker.broken.push_back (DDFW_Tagged (c, pos));
-        ++walker.ticks;
-        for (auto lit : *c) {
-          walker.critical_unsat_weight (lit) += cw.weight;
-          walker.add_uvar (lit);
-        }
-      } else if (satisfied == 1) {
-        walker.critical_sat_weight (critical) += cw.weight;
-#ifdef LOGGING
-        watched++; // to be able to compare the number with walk
-#endif
-      }
-      else {
-#ifdef LOGGING
-        watched++; // to be able to compare the number with walk
-#endif
-      }
-    }
-#ifdef LOGGING
-    if (!failed) {
-      size_t broken = walker.broken.size ();
-      size_t total = watched + broken;
-      LOG ("watching %" PRId64 " clauses %.0f%% "
-           "out of %zd (watched and broken)",
-           watched, percent (watched, total), total);
-    }
-#endif
   }
 
-  if (!failed) {
+  out_of_memory = walker.import_clauses (failed);
+  if (out_of_memory) {
+    res = 0;
+  }
+  else if (!failed) {
     walker.check_all ();
 
     size_t broken = walker.broken.size ();

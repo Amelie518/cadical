@@ -957,8 +957,10 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
     // ones (formerly critical sat)
     double flip_gain = critical_unsat_weight (lit) - critical_sat_weight (lit);
     LOG ("considering flipping %s gives %.3f", LOGLIT (lit), flip_gain);
-    // the condition `flip_gain > 0 ` is only in Tassat, not in Yallin.
-    if (flip_gain > 0 && flip_gain > best_new_satisfied) {
+    // the condition `flip_gain > 0 ` is only in Tassat, not in Yallin. That
+    // being said, it is not really useful, since `best_new_satisfied` can be
+    // initialized to 0.
+    if (flip_gain > best_new_satisfied) {
       best_new_satisfied = flip_gain;
       weight_reducing_var = idx;
       ++loop_iterations;
@@ -974,7 +976,7 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
     const int lit = internal->val (idx) ? -idx : idx;
     double flip_gain = critical_unsat_weight (lit) - critical_sat_weight (lit);
     LOG ("considering flipping %s gives %.3f", LOGLIT (lit), flip_gain);
-    if (flip_gain > 0 && flip_gain > best_new_satisfied) {
+    if (flip_gain > best_new_satisfied) {
       best_new_satisfied = flip_gain;
       weight_reducing_var = idx;
       ++loop_iterations;

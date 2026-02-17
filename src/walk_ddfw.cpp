@@ -846,7 +846,7 @@ void Walker_DDFW::transfer_weights () {
        	  coeff_c = 0; // simplified to 0 in the TaSSAT paper
        	} else {
        	  coeff_a = 0.075; // currpct in the TaSSaT paper
-       	  coeff_c = 0.175; // baspct in the TaSSaT paper
+       	  coeff_c = 0.175 * Walker_DDFW::base_weight; // baspct in the TaSSaT paper
        	}
        	break;
     }

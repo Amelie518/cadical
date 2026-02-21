@@ -1,4 +1,5 @@
 #include "internal.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -322,11 +323,13 @@ struct Walker_DDFW {
     assert (broken.size () == unsatisfied);
 
     for (auto v : internal->vars) {
-      // exact values do not work due to rounding issues. The values
-      // 0.001 might be too small already, but mobical seems to go
-      // through.
-      assert (std::abs (unsat_weights[internal->vidx (v)] - critical_unsat_weight(v)) < 0.001);
-      assert (std::abs (sat_weights[internal->vidx (v)] - critical_sat_weight(v)) < 0.001);
+      // exact values do not work due to rounding issues. We started with the
+      // value 0.001. This way more than sufficient to find bugs on usual
+      // mobical runs. However sometimes, we reached rounding errors. Therefore,
+      // we decided to increase the bound with the number of weight transfer.
+      const double bound = 0.001 * log(internal->stats.walk.weight_transfer + 10);
+      assert (std::abs (unsat_weights[internal->vidx (v)] - critical_unsat_weight(v)) < bound);
+      assert (std::abs (sat_weights[internal->vidx (v)] - critical_sat_weight(v)) < bound);
     }
 #endif
   }
@@ -334,16 +337,17 @@ struct Walker_DDFW {
   void check_vars_in_broken () const {
 #ifndef NDEBUG
   std::vector<size_t> count(internal->max_var + 1, 0);
-    for (size_t i = 0; i < broken.size (); ++i) {
-      const DDFW_Tagged t = broken[i];
-      assert (t.c);
-      assert (t.counter_pos < weight_clause_info.size ());
-      assert (clause_info (t.counter_pos).always_clause == t.c);
-      for (auto lit : *t.c) {
-        assert (internal->val (lit) < 0);
-        ++count[internal->vidx (lit)];
-      }
+  for (size_t i = 0; i < broken.size (); ++i) {
+    const DDFW_Tagged t = broken[i];
+    assert (t.c);
+    assert (t.counter_pos < weight_clause_info.size ());
+    assert (clause_info (t.counter_pos).always_clause == t.c);
+    for (auto lit : *t.c) {
+      assert (internal->val (lit) < 0);
+      ++count[internal->vidx (lit)];
     }
+  }
+  assert (vars_in_broken.size () <= (size_t)internal->max_var);
   for (auto v : internal->vars) {
     // for assumption, count is not important:
     if (internal->var (v).level == 1)

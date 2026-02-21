@@ -108,10 +108,13 @@ typedef int64_t LRAT_ID;
 // more variables.
 //
 // There is another (subtle) difference to Kissat: we keep track of degenerated
-// gates even in non-production mode. It is not clear to use how useful this
+// gates even in non-production mode. It is not clear to us how useful this
 // really is, but it is this make the procedure more complete, because it is
 // more likely to trigger the special cases that we have added to CaDiCaL to
 // propagate units.
+//
+// For the LRAT production, we rely on the internal proof producing capabilities
+// with the variable `lrat_chain` that contains the IDs of the clauses required.
 //
 // Remark (*)
 //
@@ -124,6 +127,8 @@ typedef int64_t LRAT_ID;
 // more important to find units and merge literals early. This concerns only
 // literals removed as a side-effect of rewriting, not the literals removed
 // during simplification.
+//
+
 struct Internal;
 
 // Here come some implementation remarks.
@@ -354,7 +359,7 @@ struct my_dummy_optional {
 //
 // To keep track of the proof we use two extra arrays:
 //  - `neg_lhs_ids' contains the long clause for AND gates. Otherwise, it is
-//  empty. TODO: change to std::option as it contains at most one element
+//  empty.
 //  - `pos_lhs_ids' contains all the remaining gates.
 //
 // We keep the reasons with an index. This index depends on the gates:
@@ -602,16 +607,26 @@ struct Closure {
   vector<int> eager_representant;        // union-find
   vector<LRAT_ID> representant_id;       // lrat version of union-find
   vector<LRAT_ID> eager_representant_id; // lrat version of union-find
+  // next literal in our union-find structure
   int &representative (int lit);
+  // next literal in our union-find structure
   int representative (int lit) const;
+  // clause id justifying the rewriting to the next literal in our union-find structure
   LRAT_ID &representative_id (int lit);
+  // clause id justifying the rewriting to the next literal in our union-find structure
   LRAT_ID representative_id (int lit) const;
+  // next literal in our eager union-find structure
   int &eager_representative (int lit);
+  // next literal in our eager union-find structure
   int eager_representative (int lit) const;
+  // clause id justifying the rewriting to the next literal in our eager union-find structure
   LRAT_ID &eager_representative_id (int lit);
+  // clause id justifying the rewriting to the next literal in our eager union-find structure
   LRAT_ID eager_representative_id (int lit) const;
   std::vector<char> lazy_propagated_idx;
   size_t units; // next trail position to propagate
+  // checks whether a literal has been already eager propagated (and therefore
+  // can be removed from the clauses)
   char &lazy_propagated (int lit);
 
   // representative in the union-find structure in the lazy equivalences
@@ -639,8 +654,7 @@ struct Closure {
   int find_eager_representative_and_compress (int);
   // Import the path from the literal and its negation to the representative
   // in the lazy graph to the eager part, producing the binary clauses.
-  void import_lazy_and_find_eager_representative_and_compress_both (
-      int); // generates clauses for -lit and lit
+  void import_lazy_and_find_eager_representative_and_compress_both (int);
 
   // returns the ID of the LRAT clause for the normalization from the
   // literal lit to its argument, assuming that the representative was

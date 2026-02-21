@@ -333,13 +333,6 @@ struct Internal {
   ~Internal ();
 
   /*----------------------------------------------------------------------*/
-
-  // Internal delegates and helpers for corresponding functions in
-  // 'External' and 'Solver'.  The 'init_vars' function initializes
-  // variables up to and including the requested variable index.
-  //
-  void init_and_declare_vars (int new_max_var);
-
   // Enlarge the external to internal data structures up to the index without
   // activating any literal.
   void reserve_vars (int new_max_var);

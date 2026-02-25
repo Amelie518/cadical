@@ -349,9 +349,13 @@ bool External::failed_constraint () {
 void External::phase (int elit) {
   assert (elit);
   assert (elit != INT_MIN);
+  if (std::abs(elit) > max_var) {
+    reset_extended ();
+  }
   const int ilit = internalize (elit);
   if (!internal->imports.empty()) {
-    reset_extended ();
+    if (extended)
+      reset_extended ();
     internal->activating_all_new_imported_literals ();
   }
   internal->phase (ilit);

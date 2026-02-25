@@ -55,6 +55,7 @@ static const char *USAGE =
 "In order to let the test execute '<r>' runs (starting from '<seed>') use:\n"
 "\n"
 "  -L[ ]<r>          execute '<r>' runs\n"
+"  -X[ ]<r>          execute '<r>' bugs\n"
 "\n"
 "The output trace is not shrunken if it is not failing.  However, before\n"
 "it is written it is executed, unless '--do-not-execute' is specified:\n"
@@ -1367,10 +1368,10 @@ struct Call {
 
   Type type; // Explicit typing.
 
-  int64_t res; // Compute result if any.
-  char *name = nullptr;  // Option name for 'set' and 'config'
-  int arg;     // Argument if necessary.
-  int val;     // Option value for 'set'.
+  int64_t res;          // Compute result if any.
+  char *name = nullptr; // Option name for 'set' and 'config'
+  int arg;              // Argument if necessary.
+  int val;              // Option value for 'set'.
 
   Call (Type t, int a = 0, int r = 0, const char *o = 0, int v = 0)
       : type (t), res (r), name (o ? strdup (o) : 0), arg (a), val (v) {}
@@ -2194,8 +2195,8 @@ public:
         // They are (ideally) are executed already
         if (c->type == Call::LEMMA)
           continue;
-          // if (c->type == Call::CONTINUE)
-          //   continue;
+        // if (c->type == Call::CONTINUE)
+        //   continue;
 #ifdef MOBICAL_MEMORY
         if (c->type == Call::MAXALLOC) {
           memory_bad_alloc = c->val;
@@ -2338,6 +2339,7 @@ public:
 private:
   void notify (char ch = 0) { mobical.notify (*this, ch); }
   void progress () { mobical.progress (*this); }
+  void progress (Trace &tmp) { mobical.progress (tmp); }
 
   struct Segment {
     size_t lo, hi;
@@ -3644,6 +3646,9 @@ bool Trace::shrink_segments (Trace::Segments &segments, int expected) {
   for (size_t i = 0; i < n; i++)
     removed[i] = false;
   bool res = false;
+  Trace tmp2;
+  tmp2.clear ();
+  Trace *tmp_notify = this;
   for (;;) {
     for (size_t l = 0, r; l < n; l = r) {
       r = l + granularity;
@@ -3671,12 +3676,18 @@ bool Trace::shrink_segments (Trace::Segments &segments, int expected) {
       for (size_t i = 0; i < size (); i++)
         if (!ignore[i])
           tmp.push_back (calls[i]->copy ());
-      progress ();
+      progress (*tmp_notify);
       if (tmp.fork_and_execute () != expected) { // failed
         for (size_t i = l; i < r; i++)
           removed[i] = saved[i];
       } else {
         res = true; // succeeded to shrink
+        mobical.notify (tmp);
+        tmp2.clear ();
+        for (size_t i = 0; i < tmp.size (); i++) {
+          tmp2.push_back (tmp.calls[i]->copy ());
+          tmp_notify = &tmp2;
+        }
       }
     }
     if (granularity == 1)
@@ -3761,7 +3772,7 @@ void Mobical::notify (Trace &trace, signed char ch) {
   if (traces)
     cerr << ' ' << left << setw (12) << traces;
   else
-    cerr << left << setw (13) << "reduce:";
+    cerr << left << "red: " << setw (8) << trace.executed;
   terminal.yellow ();
 
   if (!notified.empty ()) {
@@ -4686,7 +4697,7 @@ void Reader::parse () {
         error ("invalid literal '%d' as argument to 'fixed'", lit);
       if (second && !parse_int_str (second, val))
         error ("invalid second argument '%s' to 'fixed'", second);
-      if (second && val != -1 && val != 0 && val != -1)
+      if (second && val != -1 && val != 0 && val != 1)
         error ("invalid result argument '%d' to 'fixed", val);
       if (second)
         c = new FixedCall (lit, val);
@@ -4812,7 +4823,8 @@ void Reader::parse () {
       if (state == Call::RESET)
         error ("'%s' after 'reset'", c->keyword ());
 
-      if (adding && c->type != Call::ADD && c->type != Call::RESET && c->type != Call::RESIZE)
+      if (adding && c->type != Call::ADD && c->type != Call::RESET &&
+          c->type != Call::RESIZE)
         error ("'%s' after 'add %d' without 'add 0'", c->keyword (),
                adding);
 
@@ -5006,6 +5018,7 @@ int Mobical::main (int argc, char **argv) {
   const char *output_path = 0;
 
   int64_t limit = -1;
+  int64_t bug_limit = -1;
 
   // Error message in 'die' also uses colors.
   //
@@ -5102,6 +5115,19 @@ int Mobical::main (int argc, char **argv) {
         die ("multiple '-L' options (try '-h')");
       if (!is_unsigned_str (argv[i] + 2) ||
           (limit = atol (argv[i] + 2)) < 0)
+        die ("invalid argument in '%s' (try '-h')", argv[i]);
+    } else if (!strcmp (argv[i], "-X")) {
+      if (bug_limit >= 0)
+        die ("multiple '-X' options (try '-h')");
+      if (++i == argc)
+        die ("argument to '-X' missing (try '-h')");
+      if (!is_unsigned_str (argv[i]) || (bug_limit = atol (argv[i])) < 0)
+        die ("invalid argument '%s' to '-X' (try '-h')", argv[i]);
+    } else if (argv[i][0] == '-' && argv[i][1] == 'X') {
+      if (bug_limit >= 0)
+        die ("multiple '-X' options (try '-h')");
+      if (!is_unsigned_str (argv[i] + 2) ||
+          (bug_limit = atol (argv[i] + 2)) < 0)
         die ("invalid argument in '%s' (try '-h')", argv[i]);
     } else if (!strcmp (argv[i], "--time")) {
       if (++i == argc)
@@ -5451,6 +5477,8 @@ END_OF_BANNER_AND_OPTIONS:
 
     if (limit < 0)
       limit = LONG_MAX;
+    if (bug_limit < 0)
+      bug_limit = LONG_MAX;
 
     if (seed_str) {
       uint64_t seed = parse_seed (seed_str);
@@ -5497,6 +5525,8 @@ END_OF_BANNER_AND_OPTIONS:
     }
 
     for (traces = 1; traces <= limit; traces++) {
+      if (Trace::failed >= bug_limit)
+        break;
 
       if (!quiet && !donot.seeds) {
         prefix ();

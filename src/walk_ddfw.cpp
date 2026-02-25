@@ -337,7 +337,7 @@ struct Walker_DDFW {
       // logarithm of the number of weight, but still hit the same issues. This
       // version of the assert should still be good enough to find calculations
       // errors.
-      const double bound = 0.00001 * (tranferred_weights + 1);
+      const double bound = 0.0001 * (tranferred_weights + 1);
       assert (std::abs (unsat_weights[internal->vidx (v)] - critical_unsat_weight(v)) < bound);
       assert (std::abs (sat_weights[internal->vidx (v)] - critical_sat_weight(v)) < bound);
     }

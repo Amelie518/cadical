@@ -8,17 +8,6 @@ namespace CaDiCaL {
 
 struct Internal;
 
-struct factored_ite_gate {
-  int definition;
-  int condition;
-  int true_branch;
-  int false_branch;
-  factored_ite_gate (int d, int c, int t, int f)
-      : definition (d), condition (c), true_branch (t), false_branch (f) {}
-  factored_ite_gate ()
-      : definition (0), condition (0), true_branch (0), false_branch (0) {}
-};
-
 struct factor_occs_size {
   Internal *internal;
   factor_occs_size (Internal *i) : internal (i) {}

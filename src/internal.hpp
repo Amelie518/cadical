@@ -211,12 +211,11 @@ struct Internal {
   vector<int64_t> unit_chain;     // used to avoid duplicate units
   vector<Clause *> inst_chain;    // for LRAT in instantiate
   vector<vector<vector<int64_t>>>
-      probehbr_chains; // only used if opts.probehbr=false
-  bool lrat;           // generate LRAT internally
-  bool frat;           // finalize non-deleted clauses in proof
-  int level;           // decision level ('control.size () - 1')
-  Phases phases;       // saved, target and best phases
-  vector<factored_ite_gate> factored_gates;
+      probehbr_chains;          // only used if opts.probehbr=false
+  bool lrat;                    // generate LRAT internally
+  bool frat;                    // finalize non-deleted clauses in proof
+  int level;                    // decision level ('control.size () - 1')
+  Phases phases;                // saved, target and best phases
   signed char *vals;            // assignment [-max_var,max_var]
   vector<signed char> marks;    // signed marks [1,max_var]
   vector<unsigned> frozentab;   // frozen counters [1,max_var]

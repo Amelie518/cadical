@@ -1425,7 +1425,7 @@ bool Internal::run_factorization (int64_t limit) {
       // only try XOR/ITE factoring once per variable
       // (as opposed to once per literal)
       if (opts.factorxor && opts.factorsize > 2 &&
-          (!opts.factorxorsave || !(f.factor & (1u << (first > 0))))) {
+          (!opts.factorxorsave || (f.factor & (1u << (first > 0))))) {
         // Get an XOR quotient which is better then the best
         // classical quotient (or 0).
         int xorite_reduction = 0;

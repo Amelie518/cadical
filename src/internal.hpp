@@ -911,6 +911,7 @@ struct Internal {
   int forward_true_satisfiable ();
   int backward_false_satisfiable ();
   int backward_true_satisfiable ();
+  int random_lucky_assignment (signed char pol);
 
   // Asynchronous terminating check.
   //

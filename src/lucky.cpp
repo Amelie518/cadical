@@ -1,4 +1,5 @@
 #include "internal.hpp"
+#include <algorithm>
 #include <functional>
 
 namespace CaDiCaL {
@@ -244,7 +245,10 @@ int Internal::lucky_fixed_test (Iterator begin, Iterator end, signed char pol, s
 #endif
   assert (!unsat);
   assert (!level);
-  stats.lucky.forward.one++;
+  if (pol == 1)
+    stats.lucky.forward.one++;
+  else
+   stats.lucky.forward.zero++;
   int res = lucky_decide_assumptions ();
   if (res)
     return res;
@@ -385,7 +389,51 @@ int Internal::lucky_decide_assumptions () {
   return 0;
 }
 
+int Internal::random_lucky_assignment(signed char pol) {
+  if (!opts.luckyrandom)
+    return 0;
+  VERBOSE(3, "checking random variable order %s assignment", pol == 1 ? "true" : "false");
+  assert(!unsat);
+  assert(!level);
+  stats.lucky.random++;
 
+  // Shuffle the variables
+  std::vector<int> shuffle;
+  for (int idx = max_var; idx; idx--) {
+    if (val(idx)) continue;
+    if (flags (idx).unused ())
+      continue;
+    shuffle.push_back (idx);
+  }
+  Random random (opts.seed); // global seed
+  random += stats.lucky.random;  // different every time
+  const int highest_var = (int)shuffle.size ();
+  for (int i = 0; i <= highest_var - 2; i++) {
+    const int j = random.pick_int (i, highest_var - 1);
+    swap (shuffle[i], shuffle[j]);
+  }
+
+  int res = lucky_decide_assumptions();
+  if (res) return res;
+
+  for (int idx : shuffle) {
+    START:
+    if (flags(idx).unused()) continue;
+    if (val(idx)) continue;
+    if (terminated_asynchronously(10)) return unlucky(-1);
+
+    int lit = idx * pol;
+    if (lucky_propagate_discrepency(lit)) {
+      if (unsat) return 20;
+      else return unlucky(0);
+    } else {
+      goto START;
+    }
+  }
+  VERBOSE(1, "random %s assignment satisfies formula", pol == 1 ? "true" : "false");
+  assert(satisfied());
+  return 10;
+}
 /*------------------------------------------------------------------------*/
 
 int Internal::lucky_phases () {
@@ -420,7 +468,7 @@ int Internal::lucky_phases () {
   const int64_t active_initially = stats.active;
 #endif
 
-  constexpr int schedule_size = 4;
+  constexpr int schedule_size = 6;
   std::array<std::function<int ()>, schedule_size > schedule;
   int schedule_pos = 0;
 
@@ -447,6 +495,8 @@ int Internal::lucky_phases () {
       schedule[schedule_pos++] = [this]() {return backward_true_satisfiable();};
       schedule[schedule_pos++] = [this]() {return backward_false_satisfiable();};
     }
+    schedule[schedule_pos++] = [this]() { return random_lucky_assignment(1); };
+    schedule[schedule_pos++] = [this]() { return random_lucky_assignment(-1); };
   } else {
     if (!opts.varprioritizefirst) {
       schedule[schedule_pos++] = [this]() {return backward_false_satisfiable();};
@@ -459,6 +509,8 @@ int Internal::lucky_phases () {
       schedule[schedule_pos++] = [this]() {return backward_false_satisfiable();};
       schedule[schedule_pos++] = [this]() {return backward_true_satisfiable();};
     }
+    schedule[schedule_pos++] = [this]() { return random_lucky_assignment(-1); };
+    schedule[schedule_pos++] = [this]() { return random_lucky_assignment(1); };
   }
   assert (schedule_pos == schedule_size);
 
@@ -477,6 +529,7 @@ int Internal::lucky_phases () {
     }
   }
 
+  const int64_t old_active = stats.active;
   if (!res)
     do {
       const int64_t active_before = stats.active;
@@ -502,7 +555,7 @@ int Internal::lucky_phases () {
         VERBOSE (3, "lucky-%" PRId64 " in round %d found %" PRId64 " units", stats.lucky.tried, rounds, units);
     } while (units && !res && ++rounds < opts.luckyrounds);
 
-  report ('l', !res && !units);
+  report ('l', !res && (old_active == stats.active));
   searching_lucky_phases = false;
   PHASE ("lucky", stats.lucky.tried, " produced %" PRId64 " units after %d rounds", active_initially - stats.active, rounds);
 

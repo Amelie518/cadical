@@ -158,6 +158,7 @@ OPTION( lucky,             1,  0,  1,0,0,1, "lucky phases") \
 OPTION( luckyassumptions,  1,  0,  1,0,0,1, "lucky phases with assumptions") \
 OPTION( luckyearly,        1,  0,  1,0,0,1, "lucky phases before preprocessing") \
 OPTION( luckylate,         1,  0,  1,0,0,1, "lucky phases after preprocessing") \
+OPTION( luckyrandom,       0,  0,  1,0,0,1, "use lucky random") \
 OPTION( luckyrounds,       10, 1,100,0,0,1, "maximum number of lucky round") \
 OPTION( minimize,          1,  0,  1,0,0,1, "minimize learned clauses") \
 OPTION( minimizedepth,   1e3,  0,1e3,0,0,1, "minimization depth") \

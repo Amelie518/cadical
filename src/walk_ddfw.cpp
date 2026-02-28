@@ -256,10 +256,9 @@ struct Walker_DDFW {
       position_type pos = position_vars_in_broken[internal->vidx (lit)];
       assert (pos < vars_in_broken.size ());
       assert (vars_in_broken[pos] == lit);
-      vars_in_broken[pos] = vars_in_broken.back ();
-      int old_idx = vars_in_broken[pos];
+      int idx_replacement = vars_in_broken[pos] = vars_in_broken.back ();
       vars_in_broken.pop_back();
-      position_vars_in_broken[old_idx] = pos;
+      position_vars_in_broken[idx_replacement] = pos;
     }
     --uvar_count (lit);
     LOG ("unmarking %s as uvar once, remaining %d times", LOGLIT (lit), uvar_count (lit));
@@ -961,7 +960,7 @@ inline void Internal::walk_ddfw_save_minimum (Walker_DDFW &walker) {
 std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
   START (walkwrv);
   int weight_reducing_var = 0;
-  double best_new_satisfied = std::numeric_limits<double>::min ();
+  double best_new_satisfied = 0.0;
   int loop_iterations = 0;
   const bool sideways_opt = (internal->opts.walkddfwstrat < 4);
   if (sideways_opt)
@@ -969,9 +968,10 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
   const auto begin = vars_in_broken.begin ();
   const auto end = vars_in_broken.end ();
   const auto mid = last_searched_vars_in_broken < vars_in_broken.size () ? vars_in_broken.begin () + last_searched_vars_in_broken : vars_in_broken.end ();
+
   for (auto it = mid; it != end; ++it) {
     const int idx = *it;
-    const int lit = internal->val (idx) ? -idx : idx;
+    const int lit = internal->val (idx) > 0 ? -idx : idx;
     // number of new satisfied clauses: the old unsat now sat - the new unsat
     // ones (formerly critical sat)
     double flip_gain = critical_unsat_weight (lit) - critical_sat_weight (lit);
@@ -993,7 +993,7 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
 
   for (auto it = vars_in_broken.begin (); it != mid; ++it) {
     const int idx = *it;
-    const int lit = internal->val (idx) ? -idx : idx;
+    const int lit = internal->val (idx) > 0 ? -idx : idx;
     double flip_gain = critical_unsat_weight (lit) - critical_sat_weight (lit);
     LOG ("considering flipping %s gives %.3f", LOGLIT (lit), flip_gain);
     if (flip_gain < 0.0)
@@ -1006,7 +1006,7 @@ std::pair<int,double> Walker_DDFW::find_weight_reducing_variable () {
       assert (begin <= it);
     }
     else if (sideways_opt && flip_gain == 0) {
-      no_gain_literals.push_back (internal->val (idx) > 0 ? - idx : idx);
+      no_gain_literals.push_back (lit);
     }
   }
   ticks += internal->cache_lines (vars_in_broken.size (), sizeof (int)) + loop_iterations / 64;
@@ -1025,7 +1025,6 @@ bool Walker_DDFW::import_clauses (bool &failed) {
 #endif
    var_critical_sat_weights.resize (internal->max_var+1, 0);
    var_unsat_weights.resize (internal->max_var+1, 0);
-   noccs_vars_in_broken.resize (internal->max_var+1, 0);
    noccs_vars_in_broken.resize (internal->max_var+1, 0);
    const size_t i = invalid_position; // I get a compilation error otherwise
    position_vars_in_broken.resize (internal->max_var+1, i);

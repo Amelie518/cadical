@@ -1241,7 +1241,6 @@ void Internal::adjust_scores_and_phases_of_fresh_variables (
       assert (lit > 0 && internal->max_var);
       const double old_score = score (lit);
       COVER (!scores.contains (lit));
-      COVER (old_score < 0);
       if (!scores.contains (lit))
         continue;
       double new_score = old_score;
@@ -1325,9 +1324,12 @@ void Internal::adjust_scores_and_phases_of_fresh_variables (
         COVER (true);
         LOG ("enqueuing %s at bottom", LOGLIT (lit));
         queue.bury (links, lit);
+      } else if (!scores.contains (other)) {
+        // This cover actually got triggered
+        // COVER (!scores.contains (other));
+        LOG ("enqueuing %s at bottom", LOGLIT (lit));
+        queue.bury (links, lit);
       } else {
-        // TODO: broken.
-        COVER (!scores.contains (other));
         LOG ("enqueuing %s after %s", LOGLIT (lit), LOGLIT (other));
         queue.insert_after (links, lit, other);
       }

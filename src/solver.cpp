@@ -479,11 +479,13 @@ int Solver::vars () const {
 void Solver::resize (int min_max_var) {
   TRACE ("resize", min_max_var);
   REQUIRE_VALID_STATE ();
-  transition_to_steady_state ();
-  if (min_max_var) {
+  if (min_max_var <= external->max_var) {
+    LOG ("do nothing");
+  } else {
+    if (state () != SOLVING)
+      transition_to_steady_state ();
     external->reset_extended ();
-    if (external->max_var < min_max_var)
-      external->resize (min_max_var);
+    external->init (min_max_var);
   }
   LOG_API_CALL_END ("resize", min_max_var);
 }

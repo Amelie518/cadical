@@ -273,6 +273,58 @@ struct Shared {
 
 struct ExtendMap {
   vector<int> map;
+
+  int map_arg (Solver *s, int arg, bool declare_new_var = true) {
+    const int abs_arg = abs (arg);
+    const int sign = arg > 0 ? 1 : -1;
+    const int map_size = map.size ();
+    bool already_declared = (abs_arg < map_size && abs_arg && map[abs_arg]);
+    if (!abs_arg) {
+      assert (!map[abs_arg]);
+      return 0;
+    }
+    if (already_declared) {
+      return map[abs_arg] * sign;
+    }
+    if (declare_new_var) {
+      map[abs_arg] = s->vars () + 1;
+      //printf("%d -> %d\n", abs_arg, map[abs_arg]);
+      return map[abs_arg] * sign;
+    }
+    const int max_var = s->vars ();
+    const int diff = abs_arg + map_size + 1;
+    return sign * (max_var + diff);
+  }
+
+  void extend_map_to (int arg) {
+    if (map.empty ())
+      map.push_back (0); // 0 is always mapped to 0
+    if (!arg)
+      return;
+    const unsigned abs_arg = abs (arg);
+    if (abs_arg < map.size ())
+      return; // arg is already mapped
+    map.resize (abs_arg + 1, 0);
+  }
+
+  // extend the size of `extendmap` by `diff` new variables, mirroring
+  // declare_more_variable API calls.
+  //
+  // Does not do anything if diff == 0.
+  void extend_map_by (Solver *&s, int diff) {
+    assert (diff >= 0);
+    if (map.empty ())
+      map.push_back (0); // 0 is always mapped to 0
+    if (!diff)
+      return;
+    const int max_var = s->vars ();
+    //printf("adding %d new vars, starting from %d\n", diff, max_var + 1);
+    map.reserve (max_var + diff);
+    for (int i = 1; i <= diff; i++)
+      map.push_back (max_var + i);
+    //printf ("current size = %zd, last: %d\n", map.size (), map.back ());
+  }
+
 };
 
 /*------------------------------------------------------------------------*/
@@ -377,31 +429,11 @@ private:
   }
 
   void extend_map (int arg) {
-    vector<int> &map = extendmap->map;
-    if (map.empty ())
-      map.push_back (0); // 0 is always mapped to 0
-    if (!arg)
-      return;
-    const unsigned abs_arg = abs (arg);
-    if (abs_arg < map.size ())
-      return; // arg is already mapped
-    const int diff = abs_arg - map.size () + 1;
-    const int max_var = s->vars ();
-    map.reserve (max_var + diff);
-    for (int i = 1; i <= diff; i++)
-      map.push_back (max_var + i);
+    extendmap->extend_map_to(arg);
   }
 
-  int map_arg (int arg) {
-    vector<int> &map = extendmap->map;
-    const int abs_arg = abs (arg);
-    const int sign = arg > 0 ? 1 : -1;
-    const int map_size = map.size ();
-    if (abs_arg < map_size)
-      return map[abs_arg] * sign;
-    const int max_var = s->vars ();
-    const int diff = abs_arg - map_size + 1;
-    return sign * (max_var + diff);
+  int map_arg (int arg, bool declare_new_var = true) {
+    return extendmap->map_arg (s, arg, declare_new_var);
   }
 
   // Helper to print very verbose log during debugging
@@ -483,10 +515,12 @@ public:
 
     if (!new_ovars) {
       const int abs_lit = abs (lit);
-      if (!s->is_witness (map_arg (abs_lit))) { // does not extend map
-        extend_map (abs_lit);                   // now we have to extend map
-        s->add_observed_var (map_arg (abs_lit)); // might be different
-        observed_variables.insert (map_arg (abs_lit));
+      extend_map (lit);
+      assert ((size_t)abs_lit < extendmap->map.size());
+      const int elit = map_arg (abs_lit);
+      if (elit && !s->is_witness (elit)) { // does not extend map
+        s->add_observed_var (elit); // might be different
+        observed_variables.insert (elit);
       }
     } else {
       new_observed_variables.push_back (abs (lit));
@@ -497,7 +531,9 @@ public:
     for (std::vector<int>::iterator it = new_observed_variables.begin ();
          it != new_observed_variables.end (); ++it) {
       int lit = *it;
-      if (s->is_witness (map_arg (lit)))
+      if (!map_arg (lit, false))
+        continue;
+      if (s->is_witness (map_arg (lit, false)))
         continue;
       new_observed_variables.erase (it);
 
@@ -1388,36 +1424,29 @@ struct Call {
     return (((int) type & (int) Call::EXTENDMAP)) != 0;
   }
 
-  virtual void extend_map (Solver *&s, ExtendMap &extendmap) {
-    vector<int> &map = extendmap.map;
-    if (map.empty ())
-      map.push_back (0); // 0 is always mapped to 0
-    if (!arg)
-      return;
-    const unsigned abs_arg = abs (arg);
-    if (abs_arg < map.size ())
-      return; // arg is already mapped
-    const int diff = abs_arg - map.size () + 1;
-    const int max_var = s->vars ();
-    map.reserve (max_var + diff);
-    for (int i = 1; i <= diff; i++)
-      map.push_back (max_var + i);
+  // extend the size of `extendmap` by `arg` new variables.
+  virtual void extend_map_by (Solver *&s, ExtendMap &extendmap, int arg) {
+    extendmap.extend_map_by (s, arg);
   }
-  virtual int map_arg (Solver *&s, ExtendMap &extendmap) {
-    vector<int> &map = extendmap.map;
+
+  // extend the size of `extendmap` to reach size `std::abs (arg)`.
+  virtual void extend_map_to (Solver *&s, ExtendMap &extendmap) {
+    extend_map_to (s, extendmap, arg);
+  }
+  // extend the size of `extendmap` to reach size `std::abs (arg)`.
+  virtual void extend_map_to (Solver *&s, ExtendMap &extendmap, int arg) {
+    extendmap.extend_map_to (arg);
+    (void)s;
+  }
+
+  virtual int map_arg (Solver *&s, ExtendMap &extendmap, bool declare_new_var = true) {
     if (!lit_type ())
       return arg;
     if (extendmap_type ())
-      extend_map (s, extendmap);
-    const int abs_arg = abs (arg);
-    const int sign = arg > 0 ? 1 : -1;
-    const int map_size = map.size ();
-    if (abs_arg < map_size)
-      return map[abs_arg] * sign;
-    const int max_var = s->vars ();
-    const int diff = abs_arg - map_size + 1;
-    return sign * (max_var + diff);
+      extend_map_to (s, extendmap);
+    return extendmap.map_arg(s, arg, declare_new_var);
   }
+
   virtual void execute (Solver *&, ExtendMap &extendmap) = 0;
   virtual void print (ostream &o) = 0;
   virtual const char *keyword () = 0;
@@ -1534,7 +1563,11 @@ struct IrredundantCall : public Call {
 struct ResizeCall : public Call {
   ResizeCall (int max_var) : Call (RESIZE, max_var) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
-    s->resize (map_arg (s, extendmap));
+    bool has_effect = (s->vars () < arg && !arg);
+    extend_map_to (s, extendmap);
+    s->resize (arg);
+    assert (!has_effect || extendmap.map.back () == s->vars ());
+    printf ("vars = %d", s->vars ());
   }
   void print (ostream &o) { o << "resize " << arg << endl; }
   Call *copy () { return new ResizeCall (arg); }
@@ -1542,9 +1575,12 @@ struct ResizeCall : public Call {
 };
 
 struct DeclareMoreVariablesCall : public Call {
-  DeclareMoreVariablesCall (int max_var) : Call (RESIZE, max_var) {}
+  DeclareMoreVariablesCall (int max_var) : Call (RESIZE, max_var) {arg = max_var;}
   void execute (Solver *&s, ExtendMap &extendmap) {
-    s->declare_more_variables (map_arg (s, extendmap));
+    extend_map_by (s, extendmap, arg);
+    int i = s->declare_more_variables (arg);
+    assert (!arg || i == s->vars ());
+    assert (!arg || extendmap.map.back () == i);
   }
   void print (ostream &o) { o << "declare_more_variables " << arg << endl; }
   Call *copy () { return new DeclareMoreVariablesCall (arg); }
@@ -1554,8 +1590,10 @@ struct DeclareMoreVariablesCall : public Call {
 struct DeclareOneMoreVariableCall : public Call {
   DeclareOneMoreVariableCall () : Call (RESIZE) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
-    s->declare_one_more_variable ();
-    (void) extendmap;
+    extend_map_by (s, extendmap, 1);
+    int i = s->declare_one_more_variable ();
+    assert (i == s->vars ());
+    assert (extendmap.map.back () == i);
   }
   void print (ostream &o) { o << "declare_one_more_variable" << endl; }
   Call *copy () { return new DeclareOneMoreVariableCall (); }
@@ -1565,6 +1603,7 @@ struct DeclareOneMoreVariableCall : public Call {
 struct PhaseCall : public Call {
   PhaseCall (int max_var) : Call (PHASE, max_var) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
+    fflush (stdout);
     s->phase (map_arg (s, extendmap));
   }
   void print (ostream &o) { o << "phase " << arg << endl; }
@@ -1636,6 +1675,8 @@ struct ResetCall : public Call {
 struct AddCall : public Call {
   AddCall (int l) : Call (ADD, l) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
+    printf ("current size = %zd\n", extendmap.map.size ());
+    fflush (stdout);
     s->add (map_arg (s, extendmap));
   }
   void print (ostream &o) { o << "add " << arg << endl; }
@@ -1709,8 +1750,7 @@ struct LemmaCall : public Call {
     MockPropagator *mp =
         static_cast<MockPropagator *> (s->get_propagator ());
 
-    if (mp && (!arg || s->observed (map_arg (
-                           s, extendmap)))) { // || mobical.donot.enforce
+    if (mp && (!arg || s->observed (map_arg (s, extendmap, false)))) { // || mobical.donot.enforce
       mp->push_lemma_lit (map_arg (s, extendmap));
     }
   }
@@ -1852,9 +1892,9 @@ struct ValCall : public Call {
   ValCall (int l, int r = 0) : Call (VAL, l, r) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
     if (mobical.donot.enforce)
-      res = s->val (map_arg (s, extendmap));
+      res = s->val (map_arg (s, extendmap, false));
     else if (s->state () == SATISFIED)
-      res = s->val (map_arg (s, extendmap));
+      res = s->val (map_arg (s, extendmap, false));
     else
       res = 0;
   }
@@ -1867,9 +1907,9 @@ struct FlipCall : public Call {
   FlipCall (int l, int r = 0) : Call (FLIP, l, r) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
     if (mobical.donot.enforce)
-      res = s->flip (map_arg (s, extendmap));
+      res = s->flip (map_arg (s, extendmap, false));
     else if (s->state () == SATISFIED)
-      res = s->flip (map_arg (s, extendmap));
+      res = s->flip (map_arg (s, extendmap, false));
     else
       res = 0;
   }
@@ -1882,9 +1922,9 @@ struct FlippableCall : public Call {
   FlippableCall (int l, int r = 0) : Call (FLIPPABLE, l, r) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
     if (mobical.donot.enforce)
-      res = s->flippable (map_arg (s, extendmap));
+      res = s->flippable (map_arg (s, extendmap, false));
     else if (s->state () == SATISFIED)
-      res = s->flippable (map_arg (s, extendmap));
+      res = s->flippable (map_arg (s, extendmap, false));
     else
       res = 0;
   }
@@ -1898,7 +1938,7 @@ struct FlippableCall : public Call {
 struct FixedCall : public Call {
   FixedCall (int l, int r = 0) : Call (FIXED, l, r) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
-    res = s->fixed (map_arg (s, extendmap));
+    res = s->fixed (map_arg (s, extendmap, false));
   }
   void print (ostream &o) { o << "fixed " << arg << ' ' << res << endl; }
   Call *copy () { return new FixedCall (arg, res); }
@@ -1909,9 +1949,9 @@ struct FailedCall : public Call {
   FailedCall (int l, int r = 0) : Call (FAILED, l, r) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
     if (mobical.donot.enforce)
-      res = s->failed (map_arg (s, extendmap));
+      res = s->failed (map_arg (s, extendmap, false));
     else if (s->state () == UNSATISFIED)
-      res = s->failed (map_arg (s, extendmap));
+      res = s->failed (map_arg (s, extendmap, false));
     else
       res = 0;
   }
@@ -1958,7 +1998,7 @@ struct MeltCall : public Call {
 struct FrozenCall : public Call {
   FrozenCall (int l, int r = 0) : Call (FROZEN, l, r) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
-    res = s->frozen (map_arg (s, extendmap));
+    res = s->frozen (map_arg (s, extendmap, false));
   }
   void print (ostream &o) { o << "frozen " << arg << ' ' << res << endl; }
   Call *copy () { return new FrozenCall (arg, res); }

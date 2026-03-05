@@ -39,6 +39,7 @@ inline void Internal::lucky_search_assign (int lit, Clause *reason) {
   assert (searching_lucky_phases);
   if (level)
     require_mode (SEARCH);
+  assert (!flags (lit).unused ());
 
   const int idx = vidx (lit);
   assert (reason != external_reason);
@@ -261,8 +262,6 @@ int Internal::lucky_fixed_test (Iterator begin, Iterator end, signed char pol, s
     if (terminated_asynchronously (10))
       return unlucky (-1);
     if (val (idx))
-      continue;
-    if (flags (idx).unused())
       continue;
     if (lucky_propagate_discrepency (lit)) {
       if (unsat)

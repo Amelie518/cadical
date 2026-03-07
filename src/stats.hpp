@@ -112,8 +112,8 @@ struct Stats {
     struct {
       int64_t positive = 0, negative = 0;
     } horn;
-    int64_t random;
-    int64_t units;
+    int64_t random = 0;
+    int64_t units = 0;
   } lucky;
 
   struct {

@@ -292,6 +292,7 @@ struct ExtendMap {
       return map[abs_arg] * sign;
     }
     if (declare_new_var) {
+      extend_map_to (abs_arg);
       if (factor_check)
         map[abs_arg] = s->declare_one_more_variable();
       else

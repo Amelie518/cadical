@@ -1,26 +1,36 @@
 Version 3.0.X
 -------------
 
-- Fixed accidental deactivation of local search initially (off by
-  default, activation with `-L`), due to a ticks limit of 0.
-
-- Stronger congruence algorithm by taking more binary clauses into
-  account, to produce a few more units.
+User Facing Changes:
 
 - Major rework of literal import. The option `reverse` was renamed `varprioritizefirst`.
 
 - For models, CaDiCaL now outputs only the literals that are present
   in the problem. Use `modelalllits` to get all literals.
 
+- Improved walk with assumptions (literals propagated by the assumptions cannot
+  be flipped anymore). This means that lucky will now run if you have
+  assumptions. For many short calls, this can be prohibitive. Use
+  `--no-luckyassumptions`.
+
+- Fixed accidental deactivation of local search initially (off by
+  default, activation with `-L`), due to a ticks limit of 0. Only noticeable if
+  you run the solver with `-L1`.
+
+
+New and Improved Techniques:
+
+- Stronger congruence algorithm by taking more binary clauses into
+  account, to produce a few more units.
+
+- Improved performance of congruence closure thanks to a new hash
+  table instead of relying on the C++ standard one.
+
+- New DDFW algorithm for walking.
+
 - Equivalent literals substitution (`decompose`) now also works on frozen
   literals: those literals are replaced (but are kept obviously via binary
   clauses).
-
-- Improved walk with assumptions (literals propagated by the assumptions cannot
-  be flipped anymore).
-
-- New DDFW algorithm for walking
-
 
 Version 3.0.0
 -------------

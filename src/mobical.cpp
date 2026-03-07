@@ -1609,7 +1609,10 @@ struct DeclareOneMoreVariableCall : public Call {
   DeclareOneMoreVariableCall () : Call (RESIZE) {}
   void execute (Solver *&s, ExtendMap &extendmap) {
     extend_map_by (s, extendmap, 1);
-    int i = s->declare_one_more_variable ();
+#ifndef NDEBUG
+    int i =
+#endif
+      s->declare_one_more_variable ();
     assert (i == s->vars ());
     assert (extendmap.map.back () == i);
   }

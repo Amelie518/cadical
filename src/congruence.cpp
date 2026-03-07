@@ -2782,6 +2782,11 @@ Gate *Closure::find_gate_lits (const vector<int> &rhs, Gate_Type typ,
     assert (h != (Gate*)1);
     assert (!except || h != except);
   } else {
+    auto it = table.find (dummy_search_gate, except);
+    if (it != end (table))
+      h = *it;
+#if 0
+    // standard C++ version
     const auto &its = table.equal_range (dummy_search_gate);
     for (auto it = its.first; it != its.second; ++it) {
       LOG ((*it), "checking gate in the table");
@@ -2797,6 +2802,7 @@ Gate *Closure::find_gate_lits (const vector<int> &rhs, Gate_Type typ,
       h = *it;
       break;
     }
+#endif
   }
 
   if (h) {

@@ -1,12 +1,12 @@
 #ifndef _hash_hpp_INCLUDED
 #define _hash_hpp_INCLUDED
 
-#include <memory>
 #include <vector>
 #include <cassert>
 
 namespace CaDiCaL {
 
+// for debugging (we cannot use LOG)
 #define MYPRINTF(...) \
  //printf(__VA_ARGS__)
 
@@ -18,6 +18,8 @@ namespace CaDiCaL {
 // except for one element that you has already changed its hash value, but you
 // do not want to find.
 //
+// The hash table is mostly intended to contain pointers, hence it uses 0x01 as
+// tumb.
 template <class Key, class Hash, class KeyEqual = std::equal_to<Key>, class KeyEqualTmpDuplicates = std::equal_to<Key>>
 class hash {
 public:
@@ -129,7 +131,7 @@ private:
 public:
   hash () : hasher ({}) {};
   template <class T> hash (T h) : hasher (h) {
-    table.resize (1, std::pair (0, nullptr));
+    table.resize (64, std::make_pair <size_t, Key>(0, nullptr));
   };
   iterator begin() {
     return iterator(table.begin());
@@ -317,7 +319,7 @@ public:
     MYPRINTF("resize\n");
     decltype(table) new_table;
     size_t new_size = 2*table.size ();
-    new_table.resize (new_size, std::pair(0, nullptr));
+    new_table.resize (new_size, std::make_pair <size_t, Key>(0, nullptr));
     const size_t old_entries = entries;
     size_t flushed = 0;
     auto old_pos = 0;

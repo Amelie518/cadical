@@ -17,6 +17,7 @@ namespace CaDiCaL {
 // KeyEqualTmpDuplicates is used for temporary duplicates if you want to search
 // except for one element that you has already changed its hash value, but you
 // do not want to find.
+//
 template <class Key, class Hash, class KeyEqual = std::equal_to<Key>, class KeyEqualTmpDuplicates = std::equal_to<Key>>
 class hash {
 public:
@@ -120,7 +121,7 @@ public:
     typename std::vector<stored_pair>::iterator ptr;
   };
 
-  const stored_pair removed = std::make_pair<size_t, Key>(0,reinterpret_cast<const Key>((void*)1));
+  const stored_pair tumb = std::make_pair<size_t, Key>(0,reinterpret_cast<const Key>((void*)1));
 private:
     std::vector<stored_pair> table;
     Hash hasher;
@@ -150,14 +151,14 @@ public:
         pos = 0;
     }
     assert (KeyEqual (table[pos], el));
-    table[pos] = removed;
+    table[pos] = tumb;
     MYPRINTF("deleting pos %d\n", pos);
     return iterator (table.begin () + pos + 1);
   }
 
   iterator erase (iterator git) {
-    git.ptr->second = removed.second;
-    git.ptr->first = removed.first;
+    git.ptr->second = tumb.second;
+    git.ptr->first = tumb.first;
     auto rit = git + 1;
     MYPRINTF ("overwriting second\n");
     return rit;
@@ -174,7 +175,7 @@ public:
 
     while ((g = table[pos]), g.second) {
       MYPRINTF ("looking at position %zd, %zd vs %zd\n", pos, g.first, hash_val);
-      if (g == removed)
+      if (g == tumb)
         ;
       else if (g.first != hash_val)
         ;
@@ -198,7 +199,7 @@ public:
       MYPRINTF ("not found\n");
       return iterator (table.end ());
     }
-    assert (res != removed.second);
+    assert (res != tumb.second);
     return iterator (table.begin () + pos);
   }
 
@@ -213,7 +214,7 @@ public:
 
     while ((g = table[pos]), g.second) {
       MYPRINTF ("looking at position %zd, %zd vs %zd\n", pos, g.first, hash_val);
-      if (g == removed)
+      if (g == tumb)
         ;
       else if (g.first != hash_val)
         ;
@@ -235,7 +236,7 @@ public:
       MYPRINTF ("not found\n");
       return iterator (table.end ());
     }
-    assert (res != removed.second);
+    assert (res != tumb.second);
     return iterator (table.begin () + pos);
   }
 
@@ -252,7 +253,7 @@ public:
 
     while ((g = table[pos]), g.second) {
       MYPRINTF ("looking at position %zd, %zd vs %zd\n", pos, g.first, hash_val);
-      if (g == removed) {
+      if (g == tumb) {
         break;
       }
       ++collisions;
@@ -273,6 +274,8 @@ public:
     return 0;
   }
 
+#if 0
+  // buggy due to wrapping around end
   std::pair<iterator, iterator> equal_range(Key const& key)
   {
     iterator pos = find(key);
@@ -285,6 +288,7 @@ public:
       ++next;
     return make_pair (pos, next);
   }
+#endif
 
   void clear () {
     table.clear ();
@@ -323,7 +327,7 @@ public:
         ++old_pos;
         continue;
       }
-      if (el == removed){
+      if (el == tumb){
         ++flushed;
         ++old_pos;
         continue;

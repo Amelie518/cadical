@@ -4942,7 +4942,7 @@ void Closure::reset_closure () {
   for (Gate *g : table) {
     if (!g)
       continue;
-    if (g == table.removed.second)
+    if (g == table.tumb.second)
       continue;
     assert (g->indexed);
     LOG (g, "deleting");

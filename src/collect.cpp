@@ -352,7 +352,10 @@ void Internal::copy_non_garbage_clauses () {
     for (const auto &c : clauses) {
       if (last_irredundant && c > last_irredundant)
         break;
-      copy_clause (c), update_last_irredundant(c->copy);
+      if (!c->redundant && !c->collect ()) {
+        assert (!c->moved);
+        copy_clause (c), update_last_irredundant(c->copy);
+      }
     }
 
   if (opts.arenatype == 1 || !watching ()) {

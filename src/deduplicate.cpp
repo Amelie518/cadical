@@ -25,6 +25,10 @@ void Internal::mark_duplicated_binary_clauses_as_garbage () {
     return;
   if (terminated_asynchronously ())
     return;
+#ifndef NDEBUG
+  if (!new_binary_since_dedup)
+    return;
+#endif
 
   START_SIMPLIFIER (deduplicate, DEDUP);
   stats.deduplications++;
@@ -127,7 +131,7 @@ void Internal::mark_duplicated_binary_clauses_as_garbage () {
           units++;
 
         } else {
-          if (c->garbage){
+          if (c->garbage) {
             j--;
             continue;
           }
@@ -164,6 +168,8 @@ void Internal::mark_duplicated_binary_clauses_as_garbage () {
       }
     }
   }
+  assert (new_binary_since_dedup || !(subsumed + units));
+  new_binary_since_dedup = false;
   STOP_SIMPLIFIER (deduplicate, DEDUP);
 
   report ('2', !opts.reportall && !(subsumed + units));
@@ -182,48 +188,54 @@ struct deduplicate_flush_smaller {
     for (; i != eoa && j != eob; i++, j++)
       if (*i != *j)
         return *i < *j;
-    const bool smaller = (j == eob && i != eoa) || (j == eob && i == eoa && !a->redundant && b->redundant) ||
-      (j == eob && i == eoa && b->id < a->id);
+    const bool smaller =
+        (j == eob && i != eoa) ||
+        (j == eob && i == eoa && !a->redundant && b->redundant) ||
+        (j == eob && i == eoa && (a->redundant == b->redundant) &&
+         b->id < a->id);
     return smaller;
   }
 };
-
 
 /*------------------------------------------------------------------------*/
 
 // We discovered in a bug report
 // (https://github.com/arminbiere/cadical/issues/147) that some problems
-// contains clauses several times. This was handled properly before (as a side
-// effect of vivifyflush), but the proper ticks scheduling limitation makes this
-// impossible since 2.2. Therefore, we have implemented this detection as a
-// proper inprocessing technique that is off by default and run only once during
-// preprocess quickly. As we do not want to assume anything on the input
-// clauses, we also remove the true/false literals.
+// contains clauses several times. This was handled properly before (as a
+// side effect of vivifyflush), but the proper ticks scheduling limitation
+// makes this impossible since 2.2. Therefore, we have implemented this
+// detection as a proper inprocessing technique that is off by default and
+// run only once during preprocess quickly. As we do not want to assume
+// anything on the input clauses, we also remove the true/false literals.
 //
-// In essence, the code is simply taken from vivifyflush (without all the rest
-// of the code around obviously).
+// In essence, the code is simply taken from vivifyflush (without all the
+// rest of the code around obviously).
 //
 void Internal::deduplicate_all_clauses () {
   assert (!level);
-  reset_watches ();
+  clear_watches ();
 
   mark_satisfied_clauses_as_garbage ();
   garbage_collection ();
 
-  // in order to do the inprocessing inplace, we remove the deleted clauses, put
-  // the binary deleted clauses first. Then we work on the non-deleted clauses
-  // by sorting them and sorting the clause w.r.t each other.
-  clauses.end () = std::remove_if (clauses.begin (), clauses.end(), [](Clause *c){return c->garbage && c->size !=2;});
-  auto start = std::partition (clauses.begin (), clauses.end (), [](Clause *c) {return c->garbage;});
-  const auto end = clauses.end ();
-  std::for_each (start, end, [](Clause *c) {return sort (c->begin(), c->end ());});
+  // in order to do the inprocessing inplace, we remove the deleted clauses,
+  // put the binary deleted clauses first. Then we work on the non-deleted
+  // clauses by sorting them and sorting the clause w.r.t each other.
+  auto start = clauses.begin ();
+  auto mid = std::partition (clauses.begin (), clauses.end (),
+                             [] (Clause *c) { return !c->garbage; });
+  std::for_each (start, mid,
+                 [] (Clause *c) { return sort (c->begin (), c->end ()); });
+  assert (std::all_of (start, mid, [] (Clause *c) { return !c->garbage; }));
+  assert (std::all_of (mid, end (clauses),
+                       [] (Clause *c) { return c->garbage; }));
 
-  stable_sort (start, clauses.end (), deduplicate_flush_smaller ());
+  stable_sort (start, mid, deduplicate_flush_smaller ());
   auto j = start, i = j;
 
   Clause *prev = 0;
   int64_t subsumed = 0;
-  for (; i != end; i++) {
+  for (; i != mid; i++) {
     Clause *c = *j++ = *i;
     if (!prev || c->size < prev->size) {
       prev = c;
@@ -239,7 +251,14 @@ void Internal::deduplicate_all_clauses () {
       LOG (prev, "subsuming");
       assert (!c->garbage);
       assert (!prev->garbage);
-      assert (c->redundant || !prev->redundant);
+      // Defensive code that I did not manage to trigger with an assertion (I
+      // only manage to have identical redundant/irredundant clauses). But the
+      // scheduling of deduplication is not final (it currently only triggers in
+      // the first solving before anything else), so I prefer supporting this
+      // case here.
+      if (!c->redundant && prev->redundant) {
+        make_irredundant (prev);
+      }
       mark_garbage (c);
       delete_clause (c);
       subsumed++;
@@ -248,25 +267,25 @@ void Internal::deduplicate_all_clauses () {
       prev = c;
   }
 
+  assert (!subsumed || j != mid);
+  assert (j <= i);
+
   for (; i != clauses.end (); ++i) {
     Clause *c = *i;
     assert (c->garbage);
     delete_clause (c);
   }
 
-  if (subsumed) {
-    clauses.resize (j - clauses.begin ());
-  } else
-    assert (j == end);
+  clauses.resize (j - clauses.begin ());
 
   ++stats.deduplicatedinitrounds;
   PHASE ("deduplicate-all", stats.deduplicatedinitrounds,
-      "flushed %" PRId64 " subsumed clauses out of %zd", subsumed, clauses.end () - start);
+         "flushed %" PRId64 " subsumed clauses out of %zd", subsumed,
+         clauses.end () - start);
   stats.subsumed += subsumed;
   stats.deduplicatedinit += subsumed;
-
-  init_watches();
-  connect_watches();
+  check_clause_stats ();
+  connect_watches ();
   report ('d', !opts.reportall && !subsumed);
 }
 } // namespace CaDiCaL

@@ -117,6 +117,7 @@ using namespace std;
 
 struct Coveror;
 struct External;
+struct Walker_DDFW;
 struct WalkerFO;
 struct Walker;
 class Tracer;
@@ -214,6 +215,8 @@ struct Internal {
       probehbr_chains;          // only used if opts.probehbr=false
   bool lrat;                    // generate LRAT internally
   bool frat;                    // finalize non-deleted clauses in proof
+  bool new_binary_since_dedup;  // new binary clause has been learned since
+                                // last decompose round
   int level;                    // decision level ('control.size () - 1')
   Phases phases;                // saved, target and best phases
   signed char *vals;            // assignment [-max_var,max_var]
@@ -245,7 +248,13 @@ struct Internal {
   bool force_no_backtrack;      // for new clauses with external propagator
   bool from_propagator;         // differentiate new clauses...
   bool ext_clause_forgettable;  // Is new clause from propagator forgettable
-  int tainted_literal;          // used for ILB
+  bool unsat_constraint;        // constraint used for unsatisfiability?
+  bool marked_failed;           // are the failed assumptions marked?
+  bool sweep_incomplete;        // sweep
+  int earliest_changed_val;  // earliest literal whose value was changed but
+                             // was not notified yet. Only relevant for ILB
+                             // (otherwise, we backtrack, so no
+                             // renotification is needed).
   size_t notified;           // next trail position to notify external prop
   Clause *probe_reason;      // set during probing
   size_t propagated;         // next trail position to propagate
@@ -258,8 +267,6 @@ struct Internal {
   vector<int> clause;        // simplified in parsing & learning
   vector<int> assumptions;   // assumed literals
   vector<int> constraint;    // literals of the constraint
-  bool unsat_constraint;     // constraint used for unsatisfiability?
-  bool marked_failed;        // are the failed assumptions marked?
   vector<int> original;      // original added literals
   vector<int> levels;        // decision levels in learned clause
   vector<int> analyzed;      // analyzed literals in 'analyze'
@@ -268,12 +275,11 @@ struct Internal {
   vector<int> minimized;     // removable or poison in 'minimize'
   vector<int> shrinkable;    // removable or poison in 'shrink'
   Reap reap;                 // radix heap for shrink
-  bool factorcheckdone =
-      0; // boolean indicated that we have done the resize 1
 
   vector<int> sweep_schedule; // remember sweep varibles to reschedule
-  bool sweep_incomplete;      // sweep
   uint64_t randomized_deciding;
+  vector<int>
+      imports; // impported literals (ordered by order of appearance)
 
   kitten *citten;
 
@@ -332,15 +338,16 @@ struct Internal {
   ~Internal ();
 
   /*----------------------------------------------------------------------*/
+  // Enlarge the external to internal data structures up to the index
+  // without activating any literal.
+  void reserve_vars (int new_max_var);
 
-  // Internal delegates and helpers for corresponding functions in
-  // 'External' and 'Solver'.  The 'init_vars' function initializes
-  // variables up to and including the requested variable index.
-  //
-  void init_vars (int new_max_var);
+  void activating_all_new_imported_literals ();
+  void declare_variable (int);
 
   void init_enqueue (int idx);
   void init_queue (int old_max_var, int new_max_var);
+  void check_queue ();
 
   void init_scores (int old_max_var, int new_max_var);
 
@@ -366,6 +373,7 @@ struct Internal {
 #ifndef NDEBUG
     int tmp = max_var;
     tmp -= stats.unused;
+    tmp -= stats.declared;
     tmp -= stats.now.fixed;
     tmp -= stats.now.eliminated;
     tmp -= stats.now.substituted;
@@ -413,7 +421,8 @@ struct Internal {
 
   int u2i (unsigned u) {
     assert (u > 1);
-    int res = u / 2;
+    assert (u <= INT32_MAX);
+    int res = (int) u / 2;
     assert (res <= max_var);
     if (u & 1)
       res = -res;
@@ -421,7 +430,8 @@ struct Internal {
   }
 
   int citten2lit (unsigned ulit) {
-    int res = (ulit / 2) + 1;
+    assert (ulit <= INT32_MAX);
+    int res = (int) (ulit / 2) + 1;
     assert (res <= max_var);
     if (ulit & 1)
       res = -res;
@@ -462,6 +472,16 @@ struct Internal {
 
   bool occurring () const { return !otab.empty (); }
   bool watching () const { return !wtab.empty (); }
+  // Size of the trail as an int
+  //
+  // The trail containts at most every variable at most once from 1 to
+  // INT32_MAX. Therefore the size is at most INT32_MAX. This is already
+  // used implicitely in the code (like var (lit).trail). With the assertion
+  // we document the invariant.
+  int get_trail_size () const {
+    assert (trail.size () <= INT32_MAX);
+    return static_cast<int> (trail.size ());
+  }
 
   Bins &bins (int lit) { return big[vlit (lit)]; }
   Occs &occs (int lit) { return otab[vlit (lit)]; }
@@ -675,6 +695,7 @@ struct Internal {
   // Mark (active) variables as eliminated, substituted, pure or fixed,
   // which turns them into inactive variables.
   //
+  void mark_declared (int);
   void mark_eliminated (int);
   void mark_substituted (int);
   void mark_active (int);
@@ -687,6 +708,7 @@ struct Internal {
   Clause *new_clause (bool red, int glue = 0);
   void promote_clause (Clause *, int new_glue);
   void promote_clause_glue_only (Clause *, int new_glue);
+  void make_irredundant (Clause *);
   size_t shrink_clause (Clause *, int new_size);
   void minimize_sort_clause ();
   void shrink_and_minimize_clause ();
@@ -821,7 +843,7 @@ struct Internal {
   void notify_assignments ();
   void notify_decision ();
   void notify_backtrack (size_t new_level);
-  void force_backtrack (size_t new_level);
+  void force_backtrack (int new_level);
   int ask_decision ();
   bool ask_external_clause ();
   void add_observed_var (int ilit);
@@ -829,7 +851,7 @@ struct Internal {
   bool observed (int ilit) const;
   bool is_decision (int ilit);
   void check_watched_literal_invariants ();
-  void set_tainted_literal ();
+  void set_changed_val ();
   void renotify_trail_after_ilb ();
   void renotify_trail_after_local_search ();
   void renotify_full_trail ();
@@ -886,15 +908,19 @@ struct Internal {
   //
   int unlucky (int res);
   int lucky_decide_assumptions ();
+  void lucky_search_assign (int lit, Clause *reason);
   bool lucky_propagate_discrepency (int);
+  void lucky_assume_decision (int);
   int trivially_false_satisfiable ();
   int trivially_true_satisfiable ();
+  template <class Iterator>
+  int lucky_fixed_test (Iterator begin, Iterator end, signed char pol,
+                        std::string str);
   int forward_false_satisfiable ();
   int forward_true_satisfiable ();
   int backward_false_satisfiable ();
   int backward_true_satisfiable ();
-  int positive_horn_satisfiable ();
-  int negative_horn_satisfiable ();
+  int random_lucky_assignment (signed char pol);
 
   // Asynchronous terminating check.
   //
@@ -1346,6 +1372,9 @@ struct Internal {
   void schedule_factorization (Factoring &);
   bool run_factorization (int64_t limit);
   bool factor ();
+  // returns a new fresh variable, enlarges all data structures required for
+  // importing clauses, but not all. Does not add that literal to the
+  // decision queue! You need to activate all new literals later.
   int get_new_extension_variable ();
   Clause *new_factor_clause (int);
   void adjust_scores_and_phases_of_fresh_variables (Factoring &);
@@ -1418,11 +1447,27 @@ struct Internal {
   void make_clauses_along_occurrences (WalkerFO &walker, int lit);
   void make_clauses_along_unsatisfied (WalkerFO &walker, int lit);
 
+  int walk_ddfw_round (int64_t limit, bool prev);
+  void walk_ddfw ();
+  void walk_ddfw_save_minimum (Walker_DDFW &);
+  void make_clauses_along_occurrences (Walker_DDFW &walker, int lit);
+  void make_clauses_along_unsatisfied (Walker_DDFW &walker, int lit);
+
   // Warmup
   inline void warmup_assign (int lit, Clause *reason);
   void warmup_propagate_beyond_conflict ();
-  int warmup_decide ();
+  int warmup_decide_assumptions (); // only assumptions and constraints
+  void warmup_decide ();            // rest of the decisions
+  // Warmup is an attempt to combine the strength of the user propagator
+  // with SLS: we import the assignment one-by-one and propagate after each
+  // assignment. This attempts to avoid the (exponentially unlikeley) chance
+  // to find propagation chains.
   int warmup ();
+  // set and propagate all assumptions. Afterwards set the valued to the
+  // vector passed as argument and backtracks, unless it has derived UNSAT.
+  // This version does not care about the user propagator and cannot derive
+  // sat if there is an external propagator.
+  int decide_and_propagate_all_assumptions (std::vector<int> &set_lit);
 
   // Detect strongly connected components in the binary implication graph
   // (BIG) and equivalent literal substitution (ELS) in 'decompose.cpp'.
@@ -1550,8 +1595,8 @@ struct Internal {
   //
   int already_solved ();
   int restore_clauses ();
-  bool preprocess_round (int round);
-  void preprocess_quickly (bool always);
+  bool preprocess_round (int round, bool &);
+  void preprocess_quickly (bool always, bool &);
   int preprocess (bool always);
   int local_search_round (int round);
   int local_search ();
@@ -1659,6 +1704,10 @@ struct Internal {
   }
   void melt (int lit) {
     int idx = vidx (lit);
+    if ((size_t) idx < frozentab.size ()) {
+      LOG ("variable %d completely molten", idx);
+      return;
+    }
     unsigned &ref = frozentab[idx];
     if (ref < UINT_MAX) {
       if (!--ref) {
@@ -1846,7 +1895,7 @@ inline int External::fixed (int elit) const {
   int eidx = abs (elit);
   if (eidx > max_var)
     return 0;
-  int ilit = e2i[eidx];
+  int ilit = internal_lit (eidx);
   if (!ilit)
     return 0;
   if (elit < 0)

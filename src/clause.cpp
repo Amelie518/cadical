@@ -133,6 +133,8 @@ Clause *Internal::new_clause (bool red, int glue) {
     stats.current.irredundant++;
     stats.added.irredundant++;
   }
+  if (size == 2)
+    new_binary_since_dedup = true;
 
   clauses.push_back (c);
   clause_delete.release ();
@@ -239,6 +241,24 @@ size_t Internal::shrink_clause (Clause *c, int new_size) {
     mark_added (c);
 
   return res;
+}
+
+// Makes a redundant clause irredundant and update the statistics
+void Internal::make_irredundant (Clause *subsuming) {
+  assert (subsuming->redundant);
+  assert (!subsuming->garbage);
+  LOG ("turning redundant subsuming clause into irredundant clause");
+  subsuming->redundant = false;
+  if (proof)
+    proof->strengthen (subsuming->id);
+  stats.current.irredundant++;
+  stats.added.irredundant++;
+  stats.irrlits += subsuming->size;
+  assert (stats.current.redundant > 0);
+  stats.current.redundant--;
+  assert (stats.added.redundant > 0);
+  stats.added.redundant--;
+  // ... and keep 'stats.added.total'.
 }
 
 // This is the 'raw' deallocation of a clause.  If the clause is in the
@@ -350,7 +370,7 @@ void Internal::assign_original_unit (int64_t id, int lit) {
   assert (!flags (idx).eliminated ());
   Var &v = var (idx);
   v.level = 0;
-  v.trail = (int) trail.size ();
+  v.trail = get_trail_size ();
   v.reason = 0;
   const signed char tmp = sign (lit);
   set_val (idx, tmp);
@@ -364,11 +384,6 @@ void Internal::assign_original_unit (int64_t id, int lit) {
   mark_fixed (lit);
   if (level)
     return;
-  if (propagate ())
-    return;
-  assert (conflict);
-  LOG ("propagation of original unit results in conflict");
-  learn_empty_clause ();
 }
 
 // New clause added through the API, e.g., while parsing a DIMACS file.
@@ -377,20 +392,18 @@ void Internal::assign_original_unit (int64_t id, int lit) {
 // from_propagator and force_no_backtrack change the behaviour.
 // sometimes the pointer to the new clause is needed, therefore it is
 // made sure that newest_clause points to the new clause upon return.
-//
-// TODO: Find another name for 'tainted' in the context of ilb, tainted
-// is reconstruction related already and they should not mix.
+
 void Internal::add_new_original_clause (int64_t id) {
 
   if (!from_propagator && level && !opts.ilb) {
-    backtrack ();
-  } else if (tainted_literal) {
-    assert (val (tainted_literal));
-    int new_level = var (tainted_literal).level - 1;
+    backtrack_without_updating_phases ();
+  } else if (earliest_changed_val) {
+    assert (val (earliest_changed_val));
+    int new_level = var (earliest_changed_val).level - 1;
     assert (new_level >= 0);
-    backtrack (new_level);
+    backtrack_without_updating_phases (new_level);
   }
-  assert (!tainted_literal);
+  assert (!earliest_changed_val);
   LOG (original, "original clause");
   assert (clause.empty ());
   bool skip = false;
@@ -417,6 +430,7 @@ void Internal::add_new_original_clause (int64_t id) {
           if (lrat) {
             int elit = externalize (lit);
             unsigned eidx = (elit > 0) + 2u * (unsigned) abs (elit);
+            // the external units are handled somewhere else
             if (!external->ext_units[eidx]) {
               int64_t uid = unit_id (-lit);
               lrat_chain.push_back (uid);
@@ -498,6 +512,7 @@ void Internal::add_new_original_clause (int64_t id) {
         assert (val (clause[0]));
         v.level = 0;
         v.reason = 0;
+        did_external_prop = true;
         const unsigned uidx = vlit (clause[0]);
         if (lrat || frat)
           unit_clauses (uidx) = new_id;
@@ -506,7 +521,7 @@ void Internal::add_new_original_clause (int64_t id) {
         const int lit = clause[0];
         assert (!val (lit) || var (lit).level);
         if (val (lit) < 0)
-          backtrack (var (lit).level - 1);
+          backtrack_without_updating_phases (var (lit).level - 1);
         assert (val (lit) >= 0);
         handle_external_clause (0);
         assign_original_unit (new_id, lit);

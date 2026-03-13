@@ -696,7 +696,7 @@ bool Internal::cover () {
   int64_t covered = cover_round ();
 
   STOP_SIMPLIFIER (cover, COVER);
-  report ('c', !opts.reportall && !covered);
+  report ('K', !opts.reportall && !covered);
 
   return covered;
 }

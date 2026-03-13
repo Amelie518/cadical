@@ -112,6 +112,8 @@ struct Stats {
     struct {
       int64_t positive = 0, negative = 0;
     } horn;
+    int64_t random;
+    int64_t units;
   } lucky;
 
   struct {
@@ -136,8 +138,11 @@ struct Stats {
     int64_t count = 0;
     int64_t broken = 0;
     int64_t flips = 0;
-    int64_t minimum = 0;
+    size_t minimum = 0;
     int64_t improved = 0;
+    int64_t weight_reducing_var = 0;
+    int64_t sideways = 0;
+    int64_t weight_transfer = 0;
   } walk;
 
   struct {
@@ -152,6 +157,7 @@ struct Stats {
   int64_t restartlevels = 0; // levels at restart
   int64_t restartstable = 0; // actual number of happened restarts
   int64_t stabphases = 0;    // number of stabilization phases
+  int64_t nowstabphases = 0;     // number of stabilization since last incremental call
   int64_t stabconflicts =
       0;                    // number of search conflicts during stabilizing
   int64_t rescored = 0;     // number of times scores were rescored
@@ -366,6 +372,7 @@ struct Stats {
   } otfs;
 
   int64_t unused = 0;   // number of unused variables
+  int64_t declared = 0; // number of declared variables
   int64_t active = 0;   // number of active variables
   int64_t inactive = 0; // number of inactive variables
 
@@ -402,6 +409,7 @@ struct Stats {
     int64_t subsumed = 0;
     int64_t trivial_ite = 0;
     int64_t unary_ites = 0;
+    int64_t congruent_dummy_ands = 0;
   } congruence;
 
   struct {

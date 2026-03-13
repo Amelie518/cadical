@@ -4,6 +4,7 @@
 #include "util.hpp" // Alphabetically after 'heap.hpp'.
 
 #include <cassert>
+#include <climits>
 
 namespace CaDiCaL {
 

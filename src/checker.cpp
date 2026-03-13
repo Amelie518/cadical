@@ -38,8 +38,15 @@ inline CheckerWatcher &Checker::watcher (int lit) {
 CheckerClause *Checker::new_clause () {
   const size_t size = simplified.size ();
   assert (size > 1), assert (size <= UINT_MAX);
-  const size_t bytes = sizeof (CheckerClause) + (size - 2) * sizeof (int);
-  CheckerClause *res = (CheckerClause *) new char[bytes];
+
+  const size_t header_bytes = sizeof (CheckerClause);
+  const size_t actual_literal_bytes = size * sizeof (int);
+  size_t combined_bytes = header_bytes + actual_literal_bytes;
+#ifdef NFLEXIBLE
+  const size_t faked_literals_bytes = sizeof ((CheckerClause *) 0)->literals;
+  combined_bytes -= faked_literals_bytes;
+#endif
+  CheckerClause *res = (CheckerClause *) new char[combined_bytes];
   DeferDeleteArray<char> delete_res ((char *) res);
   res->next = 0;
   res->hash = last_hash;

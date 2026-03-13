@@ -107,8 +107,9 @@ const char *Parser::parse_dimacs_non_profiled (int &vars, int strict) {
 #endif
 
   bool found_inccnf_header = false;
-  int ch = 0;
+  int ch = 0, declared = 0;
   uint64_t clauses = 0;
+
   vars = 0;
 
   // First read comments before header with possibly embedded options.
@@ -214,9 +215,14 @@ const char *Parser::parse_dimacs_non_profiled (int &vars, int strict) {
     MSG ("found %s'p cnf %d %" PRIu64 "'%s header", tout.green_code (),
          vars, clauses, tout.normal_code ());
 
-    if (strict != FORCED)
+    if (vars) {
+      assert (vars > 0);
       solver->resize (vars);
+      declared = vars;
+    }
+
     internal->reserve_ids (clauses);
+
   } else if (!parse_inccnf_too)
     PER ("expected 'c' after 'p '");
   else if (ch == 'i') {
@@ -239,7 +245,7 @@ const char *Parser::parse_dimacs_non_profiled (int &vars, int strict) {
     MSG ("found %s'p inccnf'%s header", tout.green_code (),
          tout.normal_code ());
 
-    // inccnif is not compatible with factor;
+    // Cube & Conquer 'inccnf' format is not compatible with factor:
     internal->opts.factor = 0;
 
     strict = FORCED;
@@ -272,6 +278,17 @@ const char *Parser::parse_dimacs_non_profiled (int &vars, int strict) {
       while ((ch = parse_char ()) != '\n')
         if (ch == EOF)
           PER ("unexpected end-of-file in comment");
+    }
+    if (vars > declared) {
+      assert (strict == FORCED);
+      const int more_vars = vars - declared;
+      assert (more_vars > 0);
+      const int start = solver->declare_more_variables (more_vars);
+      assert (vars == start + more_vars - 1);
+      declared = vars;
+#ifdef NDEBUG
+      (void) start;
+#endif
     }
     solver->add (lit);
     if (!found_inccnf_header && !lit && parsed++ >= clauses &&
@@ -398,7 +415,7 @@ const char *Parser::parse_solution_non_profiled () {
     if (ch != 'v')
       PER ("expected 'v' at start-of-line");
     if ((ch = parse_char ()) != ' ')
-      PER ("expected ' ' after 'v'");
+      PER ("expected ' ' after 'v', got '%c' instead", ch);
     int lit = 0;
     ch = parse_char ();
     do {

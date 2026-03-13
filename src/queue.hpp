@@ -1,6 +1,7 @@
 #ifndef _queue_hpp_INCLUDED
 #define _queue_hpp_INCLUDED
 
+#include <cstdint>
 #include <vector>
 
 namespace CaDiCaL {

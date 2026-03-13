@@ -4,7 +4,10 @@
 /*------------------------------------------------------------------------*/
 
 #include "range.hpp"
+#include "util.hpp"
+#include <climits>
 #include <cstdint>
+#include <cstdlib>
 #include <unordered_map>
 #include <vector>
 
@@ -44,8 +47,14 @@ using namespace std;
 /*------------------------------------------------------------------------*/
 
 struct Clause;
-struct Internal;
+class ClauseIterator;
 struct CubesWithStatus;
+class ExternalPropagator;
+class FixedAssignmentListener;
+struct Internal;
+class Learner;
+class Terminator;
+class WitnessIterator;
 
 /*------------------------------------------------------------------------*/
 
@@ -61,7 +70,7 @@ struct External {
   size_t vsize; // Allocated external size.
 
   vector<bool> vals; // Current external (extended) assignment.
-  vector<int> e2i;   // External 'idx' to internal 'lit'.
+  std::unordered_map<int, int> e2i;   // External 'idx' to internal 'lit'.
 
   vector<int> assumptions; // External assumptions.
   vector<int> constraint;  // External constraint. Terminated by zero.
@@ -125,7 +134,7 @@ struct External {
   bool is_witness (int elit);
   bool is_decision (int elit);
 
-  void force_backtrack (size_t new_level);
+  void force_backtrack (int new_level);
 
   //----------------------------------------------------------------------//
 
@@ -171,6 +180,9 @@ struct External {
     return eidx > max_var || !ervars[eidx];
   }
 
+  inline int internal_lit (int elit) const {
+    return find_or_default (e2i, elit, 0);
+  }
   /*----------------------------------------------------------------------*/
 
   // The following five functions push individual literals or clauses on the
@@ -270,11 +282,14 @@ struct External {
   void enlarge (int new_max_var); // Enlarge allocated 'vsize'.
   void init (int new_max_var,
              bool extension = false); // Initialize up-to 'new_max_var'.
+  void resize (int new_max_var); // Reserves up-to 'new_max_var'.
 
   int internalize (
       int,
       bool extension = false); // Translate external to internal literal.
 
+  /*----------------------------------------------------------------------*/
+  int declare_var (int new_var, bool extension);
   /*----------------------------------------------------------------------*/
 
   // According to the CaDiCaL API contract (as well as IPASIR) we have to
@@ -409,7 +424,8 @@ struct External {
 
   /*----------------------------------------------------------------------*/
 
-  // Copy flags for determining preprocessing state.
+  // Copy flags for determining preprocessing state, including if a variable is
+  // an extension.
 
   void copy_flags (External &other) const;
 

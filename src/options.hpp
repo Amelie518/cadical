@@ -1,6 +1,10 @@
 #ifndef _options_hpp_INCLUDED
 #define _options_hpp_INCLUDED
 
+#include <cassert>
+#include <cstddef>
+#include <string>
+
 /*------------------------------------------------------------------------*/
 
 // In order to add a new option, simply add a new line below. Make sure that
@@ -64,6 +68,7 @@ OPTION( conditionmineff,   0,  0,2e9,1,0,1, "minimum condition efficiency") \
 OPTION( congruence,        1,  0,  1,0,1,1, "congruence closure") \
 OPTION( congruenceand,     1,  0,  1,0,0,1, "extract AND gates") \
 OPTION( congruenceandarity,1e6,2,5e7,0,0,1, "AND gate arity limit") \
+OPTION( congruenceanddummy,1,  0,  1,0,1,1, "check for dummy AND out of binary clauses") \
 OPTION( congruencebinaries,1,  0,  1,0,0,1, "extract binary and strengthen ternary clauses") \
 OPTION( congruenceite,     1,  0,  1,0,0,1, "extract ITE gates") \
 OPTION( congruencexor,     1,  0,  1,0,0,1, "extract XOR gates") \
@@ -122,7 +127,8 @@ OPTION( factorboundelim,   0,  0,  1,0,0,1, "add maximal elimbound to factorboun
 OPTION( factorbumpheap,    1,  0,  2,0,0,1, "score extension variables in heap [0: low as in kissat (do nothing), 1: based on definition, 2: high]") \
 OPTION( factorbumpqueue,   1,  0,  2,0,0,1, "score extension variables in queue [0: low as in kissat, 1: based on definition, 2: high (do nothing)]") \
 OPTION( factorcandrounds,  2,  0,2e9,0,0,1, "candidates reduction rounds (is skipped with factorxor)") \
-OPTION( factorcheck,       1,  0,  1,0,0,1, "API checks that variables have been declared") \
+OPTION( factorcandrounds,  2,  0,2e9,0,0,1, "candidates reduction rounds") \
+OPTION( factorcheck,       1,  0,  2,0,0,1, "API checks that variables have been declared (1 = only with factor on, 2 = always)") \
 OPTION( factordelay,       4,  0, 12,0,0,1, "delay bounded variable addition between eliminations") \
 OPTION( factoreffort,     75,  0,1e6,0,0,1, "relative effort per mille") \
 OPTION( factorelim,        1,  0,  1,0,0,1, "immediately mark factored variables as elimination candidates (0=delay)") \
@@ -165,9 +171,12 @@ OPTION( lucky,             1,  0,  1,0,0,1, "lucky phases") \
 OPTION( luckyassumptions,  1,  0,  1,0,0,1, "lucky phases with assumptions") \
 OPTION( luckyearly,        1,  0,  1,0,0,1, "lucky phases before preprocessing") \
 OPTION( luckylate,         1,  0,  1,0,0,1, "lucky phases after preprocessing") \
+OPTION( luckyrandom,       0,  0,  1,0,0,1, "use lucky random") \
+OPTION( luckyrounds,       10, 1,100,0,0,1, "maximum number of lucky round") \
 OPTION( minimize,          1,  0,  1,0,0,1, "minimize learned clauses") \
 OPTION( minimizedepth,   1e3,  0,1e3,0,0,1, "minimization depth") \
 OPTION( minimizeticks,     1,  0,  1,0,0,1, "increment ticks in minimization") \
+OPTION( modelalllits,      0,  0,  1,0,0,1, "print all literals (including unsed) in the model") \
 OPTION( otfs,              1,  0,  1,0,0,1, "on-the-fly self subsumption") \
 OPTION( phase,             1,  0,  1,0,0,1, "initial phase") \
 OPTION( preprocessinit,  2e6,  0,2e9,2,0,1, "initial preprocessing base limit" ) \
@@ -179,7 +188,7 @@ OPTION( probethresh,       0,  0,100,1,0,1, "delay if ticks smaller thresh*claus
 OPTION( profile,           2,  0,  4,0,0,0, "profiling level") \
 QUTOPT( quiet,             0,  0,  1,0,0,0, "disable all messages") \
 OPTION( radixsortlim,     32,  0,2e9,0,0,1, "radix sort limit") \
-OPTION( randec,            0,  0,  1,0,0,1, "random decisions") \
+OPTION( randec,            1,  0,  1,0,0,1, "random decisions") \
 OPTION( randecfocused,     1,  0,  1,0,0,1, "random decisions in focused mode") \
 OPTION( randecinit,       1e3, 2,2e9,0,0,1, "inital random decision interval") \
 OPTION( randecint,       500,  0,2e9,0,0,1, "random conflict length") \
@@ -209,7 +218,6 @@ OPTION( restartmarginstable ,25,0,25,0,0,1, "stable slow fast margin in percent"
 OPTION( restartreusetrail, 1,  0,  1,0,0,1, "enable trail reuse") \
 OPTION( restoreall,        0,  0,  2,0,0,1, "restore all clauses (2=really)") \
 OPTION( restoreflush,      0,  0,  1,0,0,1, "remove satisfied clauses") \
-OPTION( reverse,           0,  0,  1,0,0,1, "reverse variable ordering") \
 OPTION( score,             1,  0,  1,0,0,1, "use EVSIDS scores") \
 OPTION( scorefactor,     950,500,1e3,0,0,1, "score factor per mille") \
 OPTION( seed,              0,  0,2e9,0,0,1, "random seed") \
@@ -262,10 +270,14 @@ OPTION( transred,          1,  0,  1,0,1,1, "transitive reduction of BIG") \
 OPTION( transredeffort,  1e2,  1,1e5,1,0,1, "relative efficiency per mille") \
 OPTION( transredmaxeff,  1e8,  0,2e9,1,0,1, "maximum efficiency") \
 OPTION( transredmineff,    0,  0,2e9,1,0,1, "minimum efficiency") \
-QUTOPT( verbose,           0,  0,  3,0,0,0, "more verbose messages") \
+OPTION( varindexorder,     1,  0,  1,0,0,1, "use literals name given as (DIMACS) input") \
+OPTION( varkeepname,       1,  0,  1,0,0,1, "attempt to use the same internal and external name (debug purpose only)") \
+OPTION( varprioritizefirst,1,  0,  1,0,0,1, "reverse variable ordering") \
+OPTION( varprioritizeswap, 0,  0,  1,0,0,1, "reverse VMTF variable ordering (reverse of varindexorder)") \
+QUTOPT( verbose,           0,  0,  4,0,0,0, "more verbose messages") \
 OPTION( veripb,            0,  0,  4,0,0,1, "odd=check-deletions, >2 drat") \
 OPTION( vivify,            1,  0,  1,0,1,1, "vivification") \
-OPTION( vivifycalctier,    0,  0,  1,0,0,1, "recalculate tier limits") \
+OPTION( vivifycalctier,    1,  0,  1,0,0,1, "use tier limits") \
 OPTION( vivifydemote,      0,  0,  1,0,1,1, "demote irredundant or delete directly") \
 OPTION( vivifyeffort,     50,  0,1e5,1,0,1, "overall efficiency per mille") \
 OPTION( vivifyflush,       1,  0,  1,1,0,1,  "flush subsumed before vivification rounds") \
@@ -283,12 +295,14 @@ OPTION( vivifytier2eff,    2,  1,100,1,0,1, "relative tier2 effort") \
 OPTION( vivifytier3,       1,  0,  1,0,0,1, "vivification tier3") \
 OPTION( vivifytier3eff,    1,  1,100,1,0,1, "relative tier3 effort") \
 OPTION( walk,              1,  0,  1,0,0,1, "enable random walks") \
+OPTION( walkddfwstrat,      0, 0,  4,1,0,1, "ddfw weight strategy [0=yalin-itl,1=yalin=ite,2=yalin-ith,3=ddfw,4=tassat") \
 OPTION( walkeffort,       80,  1,1e5,1,0,1, "relative efficiency per mille") \
-OPTION( walkfullocc,      0,   0,  1,1,0,1, "use Kissat's full occurrences instead of the single watched") \
+OPTION( walkfullocc,       0,   0,  2,1,0,1, "0 = single watched, 1 = Kissat watched, 2 = ddfw") \
 OPTION( walkmaxeff,      1e7,  0,2e9,1,0,1, "maximum efficiency (in 1e3 ticks)") \
 OPTION( walkmineff,        0,  0,1e7,1,0,1, "minimum efficiency") \
+OPTION( walkmineffinit,  1e3,  0,1e7,1,0,1, "minimum efficiency of initial local search") \
 OPTION( walknonstable,     1,  0,  1,0,0,1, "walk in non-stabilizing phase") \
-OPTION( walkredundant,     0,  0,  1,0,0,1, "walk redundant clauses too") \
+OPTION( walkredundant,     0,  0,  2,0,0,1, "walk redundant clauses too [0 = none, 1 = binary nonyhyper, 2=all]") \
 OPTION( warmup,            1,  0,  1,0,0,1, "warmup before walk using propagation") \
 
 // Note, keep an empty line right before this line because of the last '\'!
@@ -358,7 +372,7 @@ class Options {
   static void initialize_from_environment (int &val, const char *name,
                                            const int L, const int H);
 
-  friend Config;
+  friend struct Config;
 
   void reset_default_values ();
   void disable_preprocessing ();
@@ -430,7 +444,7 @@ public:
   // 'true' is returned and the string will be set to the name of the
   // option.  Additionally the parsed value is set (last argument).
   //
-  static bool parse_long_option (const char *, string &, int &);
+  static bool parse_long_option (const char *, std::string &, int &);
 
   // Iterating options.
 

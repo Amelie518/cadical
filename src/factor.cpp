@@ -1148,6 +1148,7 @@ bool Internal::apply_factoring (Factoring &factoring, Quotient *q) {
     return true;
   }
   const int fresh = get_new_extension_variable ();
+  assert (!watching ());
   if (!fresh)
     return false;
   stats.factored++;
@@ -1223,6 +1224,11 @@ void Internal::schedule_factorization (Factoring &factoring) {
 
 void Internal::adjust_scores_and_phases_of_fresh_variables (
     Factoring &factoring) {
+  activating_all_new_imported_literals ();
+  if (!opts.factorunbump) {
+    factoring.fresh.clear ();
+    return;
+  }
   if (factoring.fresh.empty ())
     return;
 
@@ -1348,7 +1354,7 @@ void Internal::adjust_scores_and_phases_of_fresh_variables (
   } // else if (opts.factorbumpqueue == 2)
 #ifndef NDEBUG
   for (auto v : vars)
-    assert (val (v) || scores.contains (v));
+    assert (!flags (v).active () || val (v) || scores.contains (v));
   int lit = queue.first;
   int next_lit = links[lit].next;
   while (next_lit) {

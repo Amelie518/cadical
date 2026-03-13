@@ -63,6 +63,8 @@ void Internal::remove_falsified_literals (Clause *c) {
     j--;
   }
   stats.collected += shrink_clause (c, j - c->begin ());
+  if (c->size == 2)
+    new_binary_since_dedup = true;
 }
 
 // If there are new units (fixed variables) since the last garbage
@@ -447,10 +449,13 @@ void Internal::copy_non_garbage_clauses () {
 
 void Internal::check_clause_stats () {
 #ifndef NDEBUG
-  int64_t irredundant = 0, redundant = 0, total = 0, irrlits = 0;
+  int64_t irredundant = 0, redundant = 0, total = 0, irrlits = 0, garbagelits = 0, garbagecls = 0;
   for (const auto &c : clauses) {
-    if (c->garbage)
+    if (c->garbage) {
+      ++garbagecls;
+      garbagelits += c->size;
       continue;
+    }
     if (c->redundant)
       redundant++;
     else
@@ -463,6 +468,8 @@ void Internal::check_clause_stats () {
   assert (stats.current.redundant == redundant);
   assert (stats.current.total == total);
   assert (stats.irrlits == irrlits);
+  assert (stats.garbage.literals == garbagelits);
+  assert (stats.garbage.clauses == garbagecls);
 #endif
 }
 

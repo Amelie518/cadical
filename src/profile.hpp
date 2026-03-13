@@ -109,7 +109,9 @@ struct Internal;
   PROFILE (walkbreak, 4) \
   PROFILE (walkflip, 3) \
   PROFILE (walkflipbroken, 4) \
-  PROFILE (walkflipWL, 4) \
+  PROFILE (walkflipWL, 3) \
+  PROFILE (walktransferweights, 3) \
+  PROFILE (walkwrv, 3) \
   PROFILE (warmup, 3)
 
 /*------------------------------------------------------------------------*/

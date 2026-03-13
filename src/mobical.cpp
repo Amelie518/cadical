@@ -3591,8 +3591,8 @@ void Trace::print_trace (void **stack_array, size_t stack_size, ostream &os,
   for (size_t stack_index = start_index; stack_index < stack_size;
        stack_index++) {
     string stack_entry = stack_text[stack_index];
-    if (size_t position = stack_entry.rfind ("/");
-        position != string::npos) {
+    size_t position = stack_entry.rfind ("/");
+    if (position != string::npos) {
       stack_entry = stack_entry.substr (position + 1);
     }
     smatch match; // Try to unmangle C++ method names

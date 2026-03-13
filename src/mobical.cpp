@@ -4968,8 +4968,13 @@ void Reader::parse () {
     }
 
 #ifdef LOGGING
+#ifdef MOBICAL_MEMORY
+    if (trace.size () == 3 && mobical.add_set_log_to_true)
+      trace.push_back (new SetCall ("log", 1));
+#else
     if (trace.size () == 1 && mobical.add_set_log_to_true)
       trace.push_back (new SetCall ("log", 1));
+#endif
 #endif
 
     if (c && mobical.add_dump_before_solve && process_type (c->type))

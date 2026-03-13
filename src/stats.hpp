@@ -383,8 +383,8 @@ struct Stats {
         0; // number of phases of random decision
   } randec;
 
-  std::vector<uint64_t> bump_used = {0, 0};
-  std::vector<std::vector<uint64_t>> used; // used clauses in focused mode
+  uint64_t bump_used[2] = {0, 0};
+  std::vector<uint64_t> used[2] = {{}, {}}; // used clauses in focused mode
 
   struct {
     int64_t gates = 0;
@@ -420,6 +420,7 @@ struct Stats {
   } backbone;
 
   Stats ();
+  ~Stats () = default;
 
   void print (Internal *);
 };

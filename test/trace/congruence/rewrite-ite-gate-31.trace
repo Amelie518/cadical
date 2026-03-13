@@ -65,7 +65,6 @@
 64 set factoreffort 2
 65 set factoriniticks 1
 66 set factorthresh 0
-67 set factorunbump 0
 68 set fastelim 1
 69 set fastelimbound 2
 70 set fastelimclslim 975218878

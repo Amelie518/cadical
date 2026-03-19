@@ -1331,11 +1331,13 @@ void Internal::adjust_scores_and_phases_of_fresh_variables (
       if (fixed (lit))
         continue;
       if (!other) {
-        COVER (true);
+        // this cover hit only after refining the semantics of
+        // importing variables:
+        // COVER (true);
         LOG ("enqueuing %s at bottom", LOGLIT (lit));
         queue.bury (links, lit);
       } else if (!scores.contains (other)) {
-        // This cover actually got triggered
+        // This cover got triggered on the cluster:
         // COVER (!scores.contains (other));
         LOG ("enqueuing %s at bottom", LOGLIT (lit));
         queue.bury (links, lit);

@@ -4,8 +4,23 @@ namespace CaDiCaL {
 
 void Internal::copy_phases (vector<signed char> &dst) {
   START (copy);
-  for (auto i : vars)
-    dst[i] = phases.saved[i];
+  for (auto i : vars) {
+    const signed char tmp = phases.saved[i];
+    if (tmp)
+      dst[i] = tmp;
+  }
+  STOP (copy);
+}
+
+void Internal::save_assigned_phases (vector<signed char> &dst) {
+  START (copy);
+  for (auto l : trail) {
+    // discussion with Armin and Florian to only save value excluding
+    // the ones that lead to the conflict to avoid the order of
+    // propagation to lead to different conflicts.
+    if (var (l).level < level)
+      dst[vidx (l)] = vals[vidx (l)];
+  }
   STOP (copy);
 }
 

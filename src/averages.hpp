@@ -2,6 +2,7 @@
 #define _averages_hpp_INCLUDED
 
 #include "ema.hpp" // alphabetically after 'averages.hpp'
+#include <cstdint>
 
 namespace CaDiCaL {
 
@@ -20,6 +21,8 @@ struct Averages {
       EMA fast; // average fast (small window) moving trail level
       EMA slow; // average slow (large window) moving trail level
     } trail;
+
+    EMA decisions;
 
     EMA size;  // average learned clause size
     EMA jump;  // average (potential non-chronological) back-jump level

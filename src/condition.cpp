@@ -679,17 +679,16 @@ long Internal::condition_round (long delta) {
                 replacement = other;
             }
             watched_autarky_literal = replacement;
-
+#ifndef LOGGING
             if (replacement) {
               LOG (c, "watching autarky %d instead %d in candidate",
                    replacement, watched_autarky_literal);
-              watched_autarky_literal = replacement;
             } else {
               LOG ("failed to find an autarky replacement");
-              watched_autarky_literal = 0; // Breaks out of 4 loops!!!!!
             }
+#endif
           } // End of loop of turning autarky literals into conditionals.
-        }   // End of loop of all watched clauses of an unassigned literal.
+        } // End of loop of all watched clauses of an unassigned literal.
         //
         // We might abort the occurrence traversal early but already
         // removed some watches, thus have to just copy the rest.
@@ -702,7 +701,7 @@ long Internal::condition_round (long delta) {
           os.resize (i - os.begin ());
         }
       } // End of loop which goes over all unprocessed unassigned literals.
-    }   // End of loop which goes over all unprocessed conditional literals.
+    } // End of loop which goes over all unprocessed conditional literals.
 
     // We are still processing the candidate 'c' and now have reached a
     // final fix-point assignment partitioned into a conditional and an
@@ -869,6 +868,7 @@ long Internal::condition_round (long delta) {
   }
 
   reset_occs ();
+  delete_garbage_clauses ();
 
   // Reassign previously assigned variables again.
   //
@@ -906,7 +906,7 @@ void Internal::condition (bool update_limits) {
   // 'condition' we can try them.
   //
   long limit = stats.propagations.search;
-  limit *= opts.conditionreleff;
+  limit *= opts.conditioneffort;
   limit /= 1000;
   if (limit < opts.conditionmineff)
     limit = opts.conditionmineff;

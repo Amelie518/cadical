@@ -1,6 +1,7 @@
 #ifndef _queue_hpp_INCLUDED
 #define _queue_hpp_INCLUDED
 
+#include <cstdint>
 #include <vector>
 
 namespace CaDiCaL {
@@ -56,6 +57,31 @@ struct Queue {
       first = idx;
     last = idx;
     l.next = 0;
+  }
+
+  inline void bury (Links &links, int idx) {
+    Link &l = links[idx];
+    if ((l.next = first))
+      links[first].prev = idx;
+    else
+      last = idx;
+    first = idx;
+    l.prev = 0;
+  }
+
+  inline void insert_after (Links &links, int idx, int other_idx) {
+    if (!first) {
+      enqueue (links, idx);
+      return;
+    }
+    Link &l = links[idx];
+    Link &k = links[other_idx];
+    if ((l.prev = k.prev))
+      links[l.prev].next = idx;
+    else
+      first = idx;
+    k.prev = idx;
+    l.next = other_idx;
   }
 };
 

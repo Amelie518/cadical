@@ -1,2 +1,14 @@
 build
 makefile
+.aider*
+*~
+/*.trace
+/debug.json
+/*.cnf
+/*.lrat
+/*.drat
+.zed
+/traces
+*.plist
+*.pch
+.cache

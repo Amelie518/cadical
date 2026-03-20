@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <unordered_map>
 #include <vector>
 
 namespace CaDiCaL {
@@ -15,7 +16,7 @@ using namespace std;
 
 inline double relative (double a, double b) { return b ? a / b : 0; }
 inline double percent (double a, double b) { return relative (100 * a, b); }
-inline int sign (int lit) { return (lit > 0) - (lit < 0); }
+inline signed char sign (int lit) { return (lit > 0) - (lit < 0); }
 inline unsigned bign (int lit) { return 1 + (lit < 0); }
 
 /*------------------------------------------------------------------------*/
@@ -40,7 +41,7 @@ bool parse_int_str (const char *str, int &);
 
 /*------------------------------------------------------------------------*/
 
-inline bool is_power_of_two (unsigned n) { return n && !(n & (n - 1)); }
+inline bool is_power_of_two (size_t n) { return n > 0 && n && !(n & (n - 1)); }
 
 inline bool contained (int64_t c, int64_t l, int64_t u) {
   return l <= c && c <= u;
@@ -83,7 +84,7 @@ inline bool parity (unsigned a) {
 // allocated size of watched and occurrence lists small particularly during
 // bounded variable elimination where many clauses are added and removed.
 
-template <class T> void erase_vector (vector<T> &v) {
+template <class T> void erase_vector (std::vector<T> &v) {
   if (v.capacity ()) {
     std::vector<T> ().swap (v);
   }
@@ -94,12 +95,72 @@ template <class T> void erase_vector (vector<T> &v) {
 // capacity of a vector to its size thus kind of releasing all the internal
 // excess memory not needed at the moment any more.
 
-template <class T> void shrink_vector (vector<T> &v) {
+template <class T> void shrink_vector (std::vector<T> &v) {
   if (v.capacity () > v.size ()) {
-    vector<T> (v).swap (v);
+    std::vector<T> (v).swap (v);
   }
   assert (v.capacity () == v.size ()); // not guaranteed though
 }
+
+template <class T>
+static void enlarge_init (vector<T> &v, size_t N, const T &i) {
+  if (v.size () < N)
+    v.resize (N, i);
+}
+
+template <class T> static void enlarge_only (vector<T> &v, size_t N) {
+  if (v.size () < N)
+    v.resize (N, T ());
+}
+
+template <class T> static void enlarge_zero (vector<T> &v, size_t N) {
+  enlarge_init (v, N, (const T &) 0);
+}
+
+// double the capacity until it fits. This is different from reserve
+// that will allocate exactly the size requested, meaning that the
+// amortized complexity is lost.
+template <class T> static void reserve_at_least (vector<T> &v, size_t N) {
+  if (N < v.capacity ())
+    return;
+  size_t new_size = v.size ();
+  if (!new_size)
+    new_size = N;
+  while (new_size < N)
+    new_size *= 2;
+  v.reserve (new_size);
+}
+
+template <class K, class E>
+static K find_or_default (const std::unordered_map<K, E> &map, K key, E default_el) {
+  auto it = map.find (key);
+  if (it == map.end ())
+    return default_el;
+  return it->second;
+}
+// Clean-up class for bad_alloc error safety.
+
+template <typename T> struct DeferDeleteArray {
+  T *data;
+  DeferDeleteArray (T *t) : data (t) {}
+  ~DeferDeleteArray () { delete[] data; }
+  void release () { data = nullptr; }
+  void free () {
+    delete[] data;
+    data = nullptr;
+  }
+};
+
+template <typename T> struct DeferDeletePtr {
+  T *data;
+  DeferDeletePtr (T *t) : data (t) {}
+  ~DeferDeletePtr () { delete data; }
+  void release () { data = nullptr; }
+  void free () {
+    delete data;
+    data = nullptr;
+  }
+};
 
 /*------------------------------------------------------------------------*/
 

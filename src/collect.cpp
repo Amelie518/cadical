@@ -46,8 +46,13 @@ void Internal::remove_falsified_literals (Clause *c) {
       num_non_false++;
   if (num_non_false < 2)
     return;
-  if (proof)
+  if (proof) {
+    // Flush changes the clause id, external forgettables need to be
+    // marked here (or the new id could be used instead of old one)
+    if (opts.check && is_external_forgettable (c->id))
+      mark_garbage_external_forgettable (c->id);
     proof->flush_clause (c);
+  }
   literal_iterator j = c->begin ();
   for (i = j; i != end; i++) {
     const int lit = *j++ = *i, tmp = fixed (lit);
@@ -58,6 +63,8 @@ void Internal::remove_falsified_literals (Clause *c) {
     j--;
   }
   stats.collected += shrink_clause (c, j - c->begin ());
+  if (c->size == 2)
+    new_binary_since_dedup = true;
 }
 
 // If there are new units (fixed variables) since the last garbage
@@ -176,7 +183,7 @@ size_t Internal::flush_occs (int lit) {
     if (c->collect ())
       continue;
     *j++ = c->moved ? c->copy : c;
-    assert (!c->redundant);
+    // assert (!c->redundant); // -> not true in sweeping
     res++;
   }
   os.resize (j - os.begin ());
@@ -442,10 +449,13 @@ void Internal::copy_non_garbage_clauses () {
 
 void Internal::check_clause_stats () {
 #ifndef NDEBUG
-  int64_t irredundant = 0, redundant = 0, total = 0, irrlits = 0;
+  int64_t irredundant = 0, redundant = 0, total = 0, irrlits = 0, garbagelits = 0, garbagecls = 0;
   for (const auto &c : clauses) {
-    if (c->garbage)
+    if (c->garbage) {
+      ++garbagecls;
+      garbagelits += c->size;
       continue;
+    }
     if (c->redundant)
       redundant++;
     else
@@ -458,6 +468,8 @@ void Internal::check_clause_stats () {
   assert (stats.current.redundant == redundant);
   assert (stats.current.total == total);
   assert (stats.irrlits == irrlits);
+  assert (stats.garbage.literals == garbagelits);
+  assert (stats.garbage.clauses == garbagecls);
 #endif
 }
 
@@ -483,30 +495,26 @@ void Internal::remove_garbage_binaries () {
       const_watch_iterator i;
       for (i = j; i != end; i++) {
         Watch w = *i;
+        *j++ = w;
         Clause *c = w.clause;
-        if (c->reason && c->collect ()) {
+        COVER (!w.binary () && c->size == 2);
+        if (!w.binary ())
+          continue;
+        if (c->reason && c->garbage) {
+          COVER (true);
           assert (c->size == 2);
           backtrack_level =
               min (backtrack_level, var (c->literals[0]).level);
           LOG ("need to backtrack to before level %d", backtrack_level);
-        }
-        if (c->collect ())
+          --j;
           continue;
-        assert (!c->moved);
-        w.size = c->size;
-        const int new_blit_pos = (c->literals[0] == lit);
-        LOG (c, "clause in flush_watch starting from %d", lit);
-        assert (c->literals[!new_blit_pos] == lit); /*FW1*/
-        w.blit = c->literals[new_blit_pos];
-        if (w.binary ())
-          *j++ = w;
-        else
-          saved.push_back (w);
+        }
+        if (!c->collect ())
+          continue;
+        LOG (c, "removing from watch list");
+        --j;
       }
       ws.resize (j - ws.begin ());
-      for (const auto &w : saved)
-        ws.push_back (w);
-      saved.clear ();
       shrink_vector (ws);
     }
   }

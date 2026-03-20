@@ -23,6 +23,12 @@ bool Internal::rephasing () {
     return false;
   if (opts.forcephase)
     return false;
+  if (opts.rephase == 2) {
+    if (stable)
+      return stats.stabconflicts > lim.rephase;
+    else
+      return false;
+  }
   return stats.conflicts > lim.rephase;
 }
 
@@ -95,7 +101,12 @@ char Internal::rephase_walk () {
   stats.rephased.walk++;
   PHASE ("rephase", stats.rephased.total,
          "starting local search to improve current phase");
-  walk ();
+  if (opts.walkfullocc == 1)
+    walk_full_occs ();
+  else if (opts.walkfullocc == 2)
+    walk_ddfw ();
+  else
+    walk ();
   return 'W';
 }
 
@@ -104,9 +115,12 @@ char Internal::rephase_walk () {
 void Internal::rephase () {
 
   stats.rephased.total++;
+  last.stabilize.rephased++;
+  assert (last.stabilize.rephased <= stats.rephased.total);
   PHASE ("rephase", stats.rephased.total,
          "reached rephase limit %" PRId64 " after %" PRId64 " conflicts",
-         lim.rephase, stats.conflicts);
+         lim.rephase,
+         opts.rephase == 2 ? stats.stabconflicts : stats.conflicts);
 
   // Report current 'target' and 'best' and then set 'rephased' below, which
   // will trigger reporting the new 'target' and 'best' after updating it in
@@ -116,8 +130,6 @@ void Internal::rephase () {
 
   backtrack ();
   autarky ();
-  clear_phases (phases.target);
-  target_assigned = 0;
 
   size_t count = lim.rephased[stable]++;
   bool single;
@@ -160,6 +172,52 @@ void Internal::rephase () {
       break;
     }
   } else if (single && opts.walk) {
+    // (inverted,best,walk,
+    //  flipping,best,walk,
+    //    random,best,walk,
+    //  original,best,walk)^\omega
+    switch (count % 12) {
+    case 0:
+      type = rephase_inverted ();
+      break;
+    case 1:
+      type = rephase_best ();
+      break;
+    case 2:
+      type = rephase_walk ();
+      break;
+    case 3:
+      type = rephase_flipping ();
+      break;
+    case 4:
+      type = rephase_best ();
+      break;
+    case 5:
+      type = rephase_walk ();
+      break;
+    case 6:
+      type = rephase_random ();
+      break;
+    case 7:
+      type = rephase_best ();
+      break;
+    case 8:
+      type = rephase_walk ();
+      break;
+    case 9:
+      type = rephase_original ();
+      break;
+    case 10:
+      type = rephase_best ();
+      break;
+    case 11:
+      type = rephase_walk ();
+      break;
+    default:
+      type = 0;
+      break;
+    }
+  } else if (opts.rephase == 2 && opts.walk) {
     // (inverted,best,walk,
     //  flipping,best,walk,
     //    random,best,walk,
@@ -261,8 +319,12 @@ void Internal::rephase () {
       }
   } else if (!stable && (!opts.walk || !opts.walknonstable)) {
     // flipping,(random,best,flipping,best)^\omega
-    if (!count)
-      type = rephase_flipping ();
+    if (!count) {
+      if (stats.searches <= 1)
+        type = rephase_flipping ();
+      else // seems important for BMC due to our unsynchronized rephasing
+        type = rephase_original ();
+    }
     else
       switch ((count - 1) % 4) {
       case 0:
@@ -313,8 +375,14 @@ void Internal::rephase () {
   }
   assert (type);
 
+  // clear after walk such that random walk can still access the target
+  // by using the saved phases
+  copy_phases (phases.target);
+  // resetting target_assigned is not in `update_target_and_best`.
+
   int64_t delta = opts.rephaseint * (stats.rephased.total + 1);
-  lim.rephase = stats.conflicts + delta;
+  lim.rephase =
+      (opts.rephase == 2 ? stats.stabconflicts : stats.conflicts) + delta;
 
   PHASE ("rephase", stats.rephased.total,
          "new rephase limit %" PRId64 " after %" PRId64 " conflicts",
@@ -328,6 +396,9 @@ void Internal::rephase () {
   last.rephase.conflicts = stats.conflicts;
   rephased = type;
 
+  if (!marked_failed || unsat_constraint) {
+    return;
+  }
   if (stable)
     shuffle_scores ();
   else

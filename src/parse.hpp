@@ -2,7 +2,10 @@
 #define _parse_hpp_INCLUDED
 
 #include <cassert>
+#include <cstdint>
 #include <vector>
+
+#include "cadical.hpp"
 
 namespace CaDiCaL {
 
@@ -30,18 +33,20 @@ class Parser {
 
   const char *parse_string (const char *str, char prev);
   const char *parse_positive_int (int &ch, int &res, const char *name);
+  const char *parse_positive_uint64_t (int &ch, uint64_t &res,
+                                       const char *name);
   const char *parse_lit (int &ch, int &lit, int &vars, int strict);
   const char *parse_dimacs_non_profiled (int &vars, int strict);
   const char *parse_solution_non_profiled ();
 
   bool *parse_inccnf_too;
-  vector<int> *cubes;
+  std::vector<int> *cubes;
 
 public:
   // Parse a DIMACS CNF or ICNF file.
   //
   // Return zero if successful. Otherwise parse error.
-  Parser (Solver *s, File *f, bool *i, vector<int> *c)
+  Parser (Solver *s, File *f, bool *i, std::vector<int> *c)
       : solver (s), internal (s->internal), external (s->external),
         file (f), parse_inccnf_too (i), cubes (c) {}
 

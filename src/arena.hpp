@@ -1,6 +1,9 @@
 #ifndef _arena_hpp_INCLUDED
 #define _arena_hpp_INCLUDED
 
+#include <cassert>
+#include <cstring>
+
 namespace CaDiCaL {
 
 // This memory allocation arena provides fixed size pre-allocated memory for
@@ -76,7 +79,8 @@ public:
   //
   bool contains (void *p) const {
     char *c = (char *) p;
-    return from.start <= c && c < from.top;
+    return (from.start <= c && c < from.top) ||
+           (to.start <= c && c < to.top);
   }
 
   // Allocate that amount of memory in 'to' space.  This assumes the 'to'

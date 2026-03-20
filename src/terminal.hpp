@@ -1,6 +1,9 @@
 #ifndef _terminal_hpp_INCLUDED
 #define _terminal_hpp_INCLUDED
 
+#include <cassert>
+#include <cstdio>
+
 namespace CaDiCaL {
 
 class Terminal {
@@ -26,8 +29,6 @@ class Terminal {
   }
 
   void code (const char *str) {
-    if (!use_colors)
-      return;
     if (!connected)
       return;
     escape ();

@@ -37,7 +37,81 @@ int Internal::next_decision_variable_with_best_score () {
   return res;
 }
 
+void Internal::start_random_sequence () {
+  if (!opts.randec)
+    return;
+
+  assert (!stable || opts.randecstable);
+  assert (stable || opts.randecfocused);
+  assert (!randomized_deciding);
+
+  const uint64_t count = ++stats.randec.random_decision_phases;
+  const unsigned length = opts.randeclength * log (count + 10);
+  VERBOSE (3,
+           "starting random decision sequence "
+           "at %" PRId64 " conflicts for %u conflicts",
+           stats.conflicts, length);
+  randomized_deciding = length;
+
+  const double delta = stats.randec.random_decision_phases *
+                       log (stats.randec.random_decision_phases);
+  lim.random_decision = stats.conflicts + delta * opts.randecint;
+  VERBOSE (3,
+           "next random decision sequence "
+           "at %" PRId64 " conflicts current conflict: %" PRId64
+           " conflicts",
+           lim.random_decision, stats.conflicts);
+}
+
+int Internal::next_random_decision () {
+  assert (max_var);
+  if (!opts.randec)
+    return 0;
+  if (stable && !opts.randecstable)
+    return 0;
+  if (!stable && !opts.randecfocused)
+    return 0;
+  if (stats.conflicts < lim.random_decision)
+    return 0;
+  if (satisfied ())
+    return 0;
+
+  if (!randomized_deciding) {
+    if (level > (int) assumptions.size () + !!constraint.size ()) {
+      LOG ("random decision delayed because too deep");
+      return 0;
+    }
+    start_random_sequence ();
+  }
+  LOG ("searching for random decision");
+  Random random (internal->opts.seed);
+  random += stats.decisions;
+  ++stats.randec.random_decisions;
+  for (;;) {
+    int idx = 1 + (random.next () % max_var);
+    LOG ("trying lit %s", LOGLIT (idx));
+    /*
+      // Kissat filters out active literals but we cannot do that because
+      // eliminated variables are not actively removed.
+    if (!flags (idx).active())
+      continue;
+    */
+    if (val (idx))
+      continue;
+    if (flags (idx).unused ())
+      continue;
+    return idx;
+  }
+  assert (false);
+  __builtin_unreachable ();
+}
+
 int Internal::next_decision_variable () {
+  int res = next_random_decision ();
+  if (res) {
+    LOG ("randomized decision %s", LOGLIT (res));
+    return res;
+  }
   if (use_scores ())
     return next_decision_variable_with_best_score ();
   else
@@ -53,16 +127,39 @@ int Internal::next_decision_variable () {
 int Internal::decide_phase (int idx, bool target) {
   const int initial_phase = opts.phase ? 1 : -1;
   int phase = 0;
-  if (force_saved_phase)
+  if (force_saved_phase) {
     phase = phases.saved[idx];
-  if (!phase)
+    LOG ("trying force_saved_phase, i.e., %d", phase);
+  }
+  assert (force_saved_phase || !phase);
+  if (!phase) {
     phase = phases.forced[idx]; // swapped with opts.forcephase case!
-  if (!phase && opts.forcephase)
+    LOG ("trying forced phase, i.e., %d", phase);
+  }
+  if (!phase && opts.forcephase) {
     phase = initial_phase;
-  if (!phase && target)
+    LOG ("trying initial phase, i.e., %d", phase);
+  }
+  if (!phase && target) {
     phase = phases.target[idx];
-  if (!phase)
-    phase = phases.saved[idx];
+  }
+  if (!phase) {
+    // ported from kissat where it does not seem very useful
+    if (opts.stubbornIOfocused && opts.rephase == 2)
+      switch ((stats.rephased.total >> 1) & 7) {
+      case 1:
+        phase = initial_phase;
+        break;
+      case 5: // kissat has 3 but 5 looks better
+        phase = -initial_phase;
+        break;
+      default:
+        phase = phases.saved[idx];
+        break;
+      }
+    else
+      phase = phases.saved[idx];
+  }
 
   // The following should not be necessary and in some version we had even
   // a hard 'COVER' assertion here to check for this.   Unfortunately it
@@ -96,15 +193,17 @@ void Internal::new_trail_level (int lit) {
 /*------------------------------------------------------------------------*/
 
 bool Internal::satisfied () {
+  check_var_stats ();
+  LOG ("checking satisfied");
   if ((size_t) level < assumptions.size () + (!!constraint.size ()))
     return false;
-  if (num_assigned < (size_t) max_var)
+  if (num_assigned + stats.unused < (size_t) max_var)
     return false;
-  assert (num_assigned == (size_t) max_var);
+  assert (num_assigned + stats.unused == (size_t) max_var);
   if (propagated < trail.size ())
     return false;
   size_t assigned = num_assigned;
-  return (assigned == (size_t) max_var);
+  return (assigned + stats.unused == (size_t) max_var);
 }
 
 bool Internal::better_decision (int lit, int other) {
@@ -122,6 +221,11 @@ bool Internal::better_decision (int lit, int other) {
 int Internal::decide () {
   assert (!satisfied ());
   START (decide);
+  // during interaction with the user propagator, new variables can be added
+  // (for example by observed).
+  if (!imports.empty ())
+    activating_all_new_imported_literals ();
+  check_queue ();
   int res = 0;
   if ((size_t) level < assumptions.size ()) {
     const int lit = assumptions[level];
@@ -225,19 +329,30 @@ int Internal::decide () {
 #endif
 
   } else {
-    stats.decisions++;
+    check_queue ();
     int decision = ask_decision ();
-    if (!decision) {
-      int idx = next_decision_variable ();
-      const bool target = (opts.target > 1 || (stable && opts.target));
-      decision = decide_phase (idx, target);
+    if ((size_t) level < assumptions.size () ||
+        ((size_t) level == assumptions.size () && constraint.size ())) {
+      // Forced backtrack below pseudo decision levels.
+      // So one of the two branches above will handle it.
+      STOP (decide);
+      res = decide (); // STARTS and STOPS profiling
+      START (decide);
+    } else {
+      stats.decisions++;
+      if (!decision) {
+        int idx = next_decision_variable ();
+        const bool target = (opts.target > 1 || (stable && opts.target));
+        decision = decide_phase (idx, target);
+      }
+      assert (!flags (decision).unused ());
+      search_assume_decision (decision);
     }
-    search_assume_decision (decision);
   }
   if (res)
     marked_failed = false;
   STOP (decide);
+  check_var_stats ();
   return res;
 }
-
 } // namespace CaDiCaL

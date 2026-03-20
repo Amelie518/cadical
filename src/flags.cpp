@@ -1,17 +1,28 @@
+#include "flags.hpp"
 #include "internal.hpp"
 
 namespace CaDiCaL {
 
-void Internal::mark_fixed (int lit) {
-  if (external_prop && !external_prop_is_lazy && observed (lit)) {
-    int elit = externalize (lit);
-    assert (elit && external->observed (elit));
+void Internal::mark_declared (int lit) {
+  Flags &f = flags (lit);
+  assert (f.status == Flags::UNUSED);
+  f.status = Flags::DECLARED;
+  ++stats.declared;
+  --stats.unused;
+  LOG ("declaring new %d (max_var: %d, unused: %" PRId64 ", active: %" PRId64 ")", lit, max_var, stats.unused, stats.active);
+}
 
-    external->propagator->notify_assignment (elit, true);
-    // Does not increase the notified counter because
-    // it is a separated way of notification.
+void Internal::mark_fixed (int lit) {
+  if (external->fixed_listener) {
+    int elit = externalize (lit);
+    assert (elit);
+    const int eidx = abs (elit);
+    if (!external->ervars[eidx])
+      external->fixed_listener->notify_fixed_assignment (elit);
   }
   Flags &f = flags (lit);
+  if (f.status == Flags::DECLARED)
+    mark_active (lit);
   assert (f.status == Flags::ACTIVE);
   f.status = Flags::FIXED;
   LOG ("fixed %d", abs (lit));
@@ -22,6 +33,14 @@ void Internal::mark_fixed (int lit) {
   stats.active--;
   assert (!active (lit));
   assert (f.fixed ());
+
+  if (external_prop && private_steps) {
+    // If pre/inprocessing found a fixed assignment, we want the propagator
+    // to know about it.
+    // But at that point it is not guaranteed to be already on the trail, so
+    // notification will happen only later.
+    assert (!level || in_mode (BACKBONE));
+  }
 }
 
 void Internal::mark_eliminated (int lit) {
@@ -29,6 +48,8 @@ void Internal::mark_eliminated (int lit) {
   assert (f.status == Flags::ACTIVE);
   f.status = Flags::ELIMINATED;
   LOG ("eliminated %d", abs (lit));
+  if (f.factored)
+    stats.factored_eliminated++;
   stats.all.eliminated++;
   stats.now.eliminated++;
   stats.inactive++;
@@ -68,13 +89,13 @@ void Internal::mark_substituted (int lit) {
 
 void Internal::mark_active (int lit) {
   Flags &f = flags (lit);
-  assert (f.status == Flags::UNUSED);
+  assert (f.status == Flags::DECLARED);
   f.status = Flags::ACTIVE;
-  LOG ("activate %d previously unused", abs (lit));
+  LOG ("activate %d previously declared", abs (lit));
   assert (stats.inactive);
   stats.inactive--;
-  assert (stats.unused);
-  stats.unused--;
+  assert (stats.declared);
+  stats.declared--;
   stats.active++;
   assert (active (lit));
 }
@@ -117,6 +138,7 @@ void Internal::reactivate (int lit) {
   LOG ("reactivate previously %s %d", msg, abs (lit));
 #endif
   f.status = Flags::ACTIVE;
+  f.sweep = false;
   assert (active (lit));
   stats.reactivated++;
   assert (stats.inactive > 0);

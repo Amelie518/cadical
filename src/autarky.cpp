@@ -118,7 +118,9 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
       continue;
     if (val (idx))
       continue;
-    const signed char v = phases.saved[idx];
+    signed char v = phases.saved[idx];
+    if (!v)
+      v = opts.phase ? 1 : -1;
     LOG ("setting initial value of %d to %d", idx, v);
     autarky_val[vlit (idx)] = v;
     autarky_val[vlit (-idx)] = -v;
@@ -197,6 +199,7 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
 
   // final pass. This requires a one-watch literal scheme.
   clear_watches();
+
   for (auto *c : clauses) {
     if (c->garbage)
       continue;
@@ -211,16 +214,20 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
       const int l1 = c->literals[0];
       const int l2 = c->literals[1];
       for (auto lit: *c) {
-	const signed char v = autarky_val[vlit (lit)];
-	const int other = (lit == l1 ? l2 : l1);
-	if (v > 0)
-	  watch_literal(lit, other, c);
+        const signed char v = autarky_val[vlit (lit)];
+        const int other = (lit == l1 ? l2 : l1);
+        if (v > 0) {
+          Watches &ws = watches (lit);
+          ws.push_back (Watch (other, c));
+          LOG (c, "watch %d blit %d in", lit, other);
+          break;
+        }
       }
     }
     // removed: propagate_autarky
 
   }
-  
+
   clear_watches();
 
   if (assigned) {
@@ -251,15 +258,17 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     for (auto lit : *c) {
       const signed char v = autarky_val [vlit (lit)];
       if (v > 0) {
-	satisfied = true; break;
+        satisfied = true; break;
       }
       if (v < 0) {
-	falsified = true; continue;
+        falsified = true; continue;
       }
     }
     LOG (c, "clause");
     assert (!falsified || satisfied);
     if (satisfied) {
+      if (proof)
+        proof->weaken_minus(c);
       if (!compact) {
         external->push_zero_on_extension_stack ();
         for (auto lit : actual_autarky)
@@ -278,7 +287,8 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       if (v > 0) {
         external->push_zero_on_extension_stack ();
         external->push_witness_literal_on_extension_stack (lit);
-	external->push_id_on_extension_stack (lit); //fake id
+        external->push_zero_on_extension_stack ();
+        external->push_id_on_extension_stack (lit); //fake id
         external->push_zero_on_extension_stack ();
         external->push_clause_literal_on_extension_stack (lit);
       }

@@ -1,5 +1,4 @@
 #include "internal.hpp"
-#include <cstdint>
 
 namespace CaDiCaL {
 // Algorithm to find autarkies based on the phases.  For incremental SAT solving, this can be a
@@ -27,8 +26,9 @@ inline unsigned Internal::autarky_propagate_clause (Clause *c, std::vector<signe
     const int v = autarky_val[vlit (lit)];
     if (v > 0)
       satisfied = true;
-    else if (v < 0)
+    else if (v < 0) {
       falsified = true;
+    }
   }
 
   if (satisfied)
@@ -264,14 +264,19 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     if (c->redundant)
       continue;
     bool satisfied = false;
+  #ifndef NDEBUG
     bool falsified = false;
+  #endif
     for (auto lit : *c) {
       const signed char v = autarky_val [vlit (lit)];
       if (v > 0) {
         satisfied = true; break;
       }
       if (v < 0) {
-        falsified = true; continue;
+#ifndef NDEBUG
+        falsified = true;
+#endif
+        continue;
       }
     }
     LOG (c, "clause");

@@ -78,9 +78,14 @@ void External::push_binary_clause_on_extension_stack (int64_t id, int pivot,
 void External::push_external_clause_and_witness_on_extension_stack (
     const vector<int> &c, const vector<int> &w, int64_t id) {
   assert (id);
+  assert (id > 0);
   extension.push_back (0);
-  for (const auto &elit : w) {
-    assert (elit != INT_MIN);
+  assert (!w.empty());
+  assert (!c.empty());
+  for (const auto &ilit : w) {
+    assert (ilit != INT_MIN && ilit);
+    int elit = internal->externalize(ilit);
+    assert (elit != INT_MIN && elit);
     init (abs (elit));
     extension.push_back (elit);
     mark (witness, elit);
@@ -91,13 +96,45 @@ void External::push_external_clause_and_witness_on_extension_stack (
   extension.push_back (higher_bits);
   extension.push_back (lower_bits);
   extension.push_back (0);
-  for (const auto &elit : c) {
+  for (const auto &ilit : c) {
+    assert (ilit != INT_MIN && ilit);
+    int elit = internal->externalize(ilit);
+    assert (elit != INT_MIN && elit);
+    init (abs (elit));
+    extension.push_back (elit);
+  }
+}
+/*------------------------------------------------------------------------*/
+
+void External::push_external_clause_and_witness_on_extension_stack (
+    Clause *c, vector<int> &&w) {
+  int64_t id = c->id;
+  assert (id > 0);
+  assert (!w.empty());
+  assert (c->size);
+  LOG (extension, "extension stack:");
+  extension.push_back (0);
+  for (const auto &ilit : w) {
+    int elit = internal->externalize(ilit);
+    assert (elit != INT_MIN);
+    assert (elit);
+    init (abs (elit));
+    extension.push_back (elit);
+    mark (witness, elit);
+  }
+  extension.push_back (0);
+  const uint32_t higher_bits = static_cast<int> (id << 32);
+  const uint32_t lower_bits = (id & (((int64_t) 1 << 32) - 1));
+  extension.push_back (higher_bits);
+  extension.push_back (lower_bits);
+  extension.push_back (0);
+  for (const auto &ilit : *c) {
+    int elit = internal->externalize(ilit);
     assert (elit != INT_MIN);
     init (abs (elit));
     extension.push_back (elit);
   }
 }
-
 /*------------------------------------------------------------------------*/
 
 // This is the actual extension process. It goes backward over the clauses

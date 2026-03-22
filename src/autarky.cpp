@@ -294,6 +294,11 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       }
     }
   }
+
+  for (auto v : vars) {
+    if (autarky_val[vlit (v)])
+      mark_elim(v);
+  }
   LOG ("autarky removed %d clauses", removed);
 }
 
@@ -303,7 +308,7 @@ bool Internal::autarky () {
     return false;
   START (autarky);
 
-  std::vector<signed char> autarky_val; autarky_val.resize (2*max_var + 1);
+  std::vector<signed char> autarky_val; autarky_val.resize (2*max_var + 2);
   std::vector<int> work;
 
   ++stats.autarkies.tries;

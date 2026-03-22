@@ -56,6 +56,22 @@ class Learner;
 class Terminator;
 class WitnessIterator;
 
+
+struct StoredExtension {
+  bool single_witness;
+  int64_t id;
+  union {
+    std::vector<int> witness;
+    int witness_lit;
+  };
+  std::vector<int> clause;
+
+  StoredExtension (std::vector<int>&& w, uint64_t my_id, std::vector<int> &&c) : single_witness(false), id (my_id), witness (w), clause (c) {}
+
+  StoredExtension (int w, uint64_t my_id, std::vector<int> &&c) : single_witness(true), id (my_id), witness_lit (w), clause (c) {}
+
+};
+
 /*------------------------------------------------------------------------*/
 
 /*------------------------------------------------------------------------*/
@@ -135,6 +151,8 @@ struct External {
   bool is_decision (int elit);
 
   void force_backtrack (int new_level);
+
+  std::vector<int> tmp_witness;
 
   //----------------------------------------------------------------------//
 
@@ -244,6 +262,8 @@ struct External {
 
   void push_external_clause_and_witness_on_extension_stack (
       const vector<int> &clause, const vector<int> &witness, int64_t id);
+  void push_external_clause_and_witness_on_extension_stack (
+      Clause *clause, vector<int> &&witness);
 
   void push_id_on_extension_stack (int64_t id);
 

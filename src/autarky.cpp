@@ -210,7 +210,7 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
     LOG (c, "final checking clause for autarky ");
     unsigned unassigned = autarky_propagate_clause (c, autarky_val, work);
     if (unassigned) {
-      assigned -= autarky_propagate(autarky_val, work);
+      assigned -= unassigned + autarky_propagate(autarky_val, work);
     }
     else {
       const int l1 = c->literals[0];
@@ -226,6 +226,17 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
       }
     }
   }
+
+#ifndef NDEBUG
+  {
+    unsigned i = 0;
+    for (auto lit : vars) {
+      if (autarky_val[vlit (lit)])
+        ++i;
+    }
+    assert (i == assigned);
+  }
+#endif
 
   clear_watches();
 
@@ -335,6 +346,7 @@ bool Internal::autarky () {
       mark_eliminated (idx);
     }
   }
+  assert (!actual_autarky.empty ());
 
   autarky_apply (autarky_val, actual_autarky);
 

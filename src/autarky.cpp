@@ -197,7 +197,7 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
   }
 #endif
 
-  // final pass. This requires a one-watch literal scheme.
+  // final pass. This requires a full-watched literal scheme.
   clear_watches();
 
   for (auto *c : clauses) {

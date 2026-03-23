@@ -63,15 +63,15 @@ void Stats::print (Internal *internal) {
 
   SECTION ("statistics");
 
-  if (all || stats.autarkies.rounds) {
+  if (all || stats.autarkies.successful) {
     PRT ("autarkies:       %15" PRId64
          "   %10.2f %%  of vars",
-         stats.autarkies.rounds,
+         stats.autarkies.eliminated,
          percent (stats.autarkies.eliminated, stats.vars));
     PRT ("  autartried:    %15" PRId64 "   %10.2f    per interval",
          stats.autarkies.tries, relative (stats.conflicts, stats.autarkies.tries));
     PRT ("  autarrounds:   %15" PRId64 "   %10.2f    per tried",
-         stats.autarkies.rounds, relative (stats.autarkies.rounds, stats.autarkies.tries));
+         stats.autarkies.successful, relative (stats.autarkies.successful, stats.autarkies.tries));
   }
   if (all || stats.blocked) {
     PRT ("blocked:         %15" PRId64

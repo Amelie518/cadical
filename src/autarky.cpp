@@ -295,18 +295,16 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   }
 
   if (compact) {
-    for (auto lit : lits) {
-      const signed char v = autarky_val [vlit (lit)];
-      if (v > 0) {
-        external->push_external_clause_and_witness_on_extension_stack({lit}, {lit}, lit);
-      }
+    for (auto var : vars) {
+      const signed char v = autarky_val [vlit (var)];
+      if (!v)
+        continue;
+      assert (v == 1 || v == -1);
+      int lit = v * var;
+      external->push_external_clause_and_witness_on_extension_stack({lit}, {lit}, lit);
     }
   }
 
-  for (auto v : vars) {
-    if (autarky_val[vlit (v)])
-      mark_elim(v);
-  }
   LOG ("autarky removed %d clauses", removed);
 }
 
@@ -348,7 +346,7 @@ bool Internal::autarky () {
 
   autarky_apply (autarky_val, actual_autarky);
 
-  ++stats.autarkies.rounds;
+  ++stats.autarkies.successful;
   stats.autarkies.eliminated += autarky_found;
   mark_redundant_clauses_with_eliminated_variables_as_garbage ();
   connect_watches();

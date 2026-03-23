@@ -129,7 +129,7 @@ struct Stats {
   struct {
     int64_t tries;   // number of attempts to find an autarky
     int64_t eliminated;// number of eliminated literals
-    int64_t rounds;
+    int64_t successful; // number of successful autarky rounds
   } autarkies;
 
   struct {

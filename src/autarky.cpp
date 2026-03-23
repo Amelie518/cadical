@@ -261,27 +261,36 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   for (auto *c : clauses) {
     if (c->garbage)
       continue;
-    if (c->redundant)
-      continue;
+#ifndef NDEBUG
     bool satisfied = false;
-  #ifndef NDEBUG
     bool falsified = false;
-  #endif
+#endif
+    bool touched = false;
     for (auto lit : *c) {
       const signed char v = autarky_val [vlit (lit)];
+      touched = v;
+#ifndef NDEBUG
       if (v > 0) {
         satisfied = true; break;
       }
       if (v < 0) {
-#ifndef NDEBUG
         falsified = true;
-#endif
         continue;
       }
+#endif
+    if (v)
+      break;
     }
     LOG (c, "clause");
-    assert (!falsified || satisfied);
-    if (satisfied) {
+    assert (c->redundant || !falsified || satisfied);
+    assert (c->redundant || touched == satisfied);
+    if (c->redundant && touched) {
+      LOG (c, "delete touched clause");
+      mark_garbage (c);
+      continue;
+    }
+    if (touched) {
+      assert (!c->redundant);
       if (proof)
         proof->weaken_minus(c);
       if (!compact) {
@@ -348,7 +357,7 @@ bool Internal::autarky () {
 
   ++stats.autarkies.successful;
   stats.autarkies.eliminated += autarky_found;
-  mark_redundant_clauses_with_eliminated_variables_as_garbage ();
+  //mark_redundant_clauses_with_eliminated_variables_as_garbage ();
   connect_watches();
   report ('a');
   STOP (autarky);

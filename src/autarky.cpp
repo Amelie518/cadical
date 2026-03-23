@@ -268,7 +268,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     bool touched = false;
     for (auto lit : *c) {
       const signed char v = autarky_val [vlit (lit)];
-      touched = v;
+      touched = (touched || v);
 #ifndef NDEBUG
       if (v > 0) {
         satisfied = true; break;

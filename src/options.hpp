@@ -30,7 +30,7 @@ OPTION( arenacompact,      1,  0,  1,0,0,1, "keep clauses compact") \
 OPTION( arenasort,         1,  0,  1,0,0,1, "sort clauses in arena") \
 OPTION( arenatype,         3,  1,  3,0,0,1, "1=clause, 2=var, 3=queue") \
 OPTION( autarkies,         0,  0,  1,0,0,1, "search for autarkies") \
-OPTION( autarkynonincr,    0,  0,  0,0,0,1, "compact autarky reconstruction. Non compatible with incremental") \
+OPTION( autarkynonincr,    0,  0,  1,0,0,1, "compact autarky reconstruction. Non compatible with incremental") \
 OPTION( backbone,          1,  0,  2,0,0,1, "binary clause backbone") \
 OPTION( backboneeffort,   20,  0,1e5,0,0,1, "binary effort in per mile") \
 OPTION( backbonemaxrounds,1e3, 0,1e5,0,0,1, "backbone rounds limit") \

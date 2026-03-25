@@ -291,9 +291,9 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     }
     if (touched) {
       assert (!c->redundant);
-      if (proof)
-        proof->weaken_minus(c);
       if (!compact) {
+        if (proof)
+          proof->weaken_minus(c);
         std::vector<int> witness = actual_autarky;
         external->push_external_clause_and_witness_on_extension_stack(c, std::move (witness));
       }
@@ -303,6 +303,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     }
   }
 
+  MSG ("autarky applied");
   if (compact) {
     for (auto var : vars) {
       const signed char v = autarky_val [vlit (var)];
@@ -336,25 +337,24 @@ bool Internal::autarky () {
   std::vector<int> actual_autarky; actual_autarky.reserve (autarky_found);
   const bool full_aut = !opts.autarkynonincr;
 
+  assert (!actual_autarky.empty ());
+
+  autarky_apply (autarky_val, actual_autarky);
+
   for (auto idx : vars) {
     if (!autarky_val [vlit (idx)])
       continue;
     assert (active (idx));
+    mark_eliminated (idx);
     if (autarky_val [vlit (idx)] > 0){
       if (full_aut) actual_autarky.push_back(idx);
-      mark_eliminated (idx);
     }
     else {
       assert (autarky_val [vlit (-idx)] > 0);
       assert (autarky_val [vlit (idx)] < 0);
       if (full_aut) actual_autarky.push_back(-idx);
-      mark_eliminated (idx);
     }
   }
-  assert (!actual_autarky.empty ());
-
-  autarky_apply (autarky_val, actual_autarky);
-
   ++stats.autarkies.successful;
   stats.autarkies.eliminated += autarky_found;
   //mark_redundant_clauses_with_eliminated_variables_as_garbage ();

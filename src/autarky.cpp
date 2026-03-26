@@ -108,6 +108,7 @@ unsigned Internal::autarky_propagate (std::vector<signed char> &autarky_val, std
 
 int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vector<int> &work) {
   unsigned assigned = 0;
+  const bool target = (opts.target > 1 || (stable && opts.target));
   // importing phases
   for (auto idx : vars) {
     autarky_val[vlit (idx)] = 0;
@@ -118,7 +119,7 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
       continue;
     if (val (idx))
       continue;
-    signed char v = phases.saved[idx];
+    signed char v = target ? phases.target[idx] : phases.saved[idx];
     if (!v)
       v = opts.phase ? 1 : -1;
     LOG ("setting initial value of %d to %d", idx, v);

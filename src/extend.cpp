@@ -86,7 +86,7 @@ void External::push_external_clause_and_witness_on_extension_stack (
     assert (ilit != INT_MIN && ilit);
     int elit = internal->externalize(ilit);
     assert (elit != INT_MIN && elit);
-    init (abs (elit));
+    assert (abs (elit) <= max_var);
     extension.push_back (elit);
     mark (witness, elit);
   }
@@ -100,7 +100,7 @@ void External::push_external_clause_and_witness_on_extension_stack (
     assert (ilit != INT_MIN && ilit);
     int elit = internal->externalize(ilit);
     assert (elit != INT_MIN && elit);
-    init (abs (elit));
+    assert (abs (elit) <= max_var);
     extension.push_back (elit);
   }
 }
@@ -118,8 +118,6 @@ void External::push_external_clause_and_witness_on_extension_stack (
     int elit = internal->externalize(ilit);
     assert (elit != INT_MIN);
     assert (elit);
-    assert (abs (elit) <= max_var);
-    init (abs (elit));
     extension.push_back (elit);
     mark (witness, elit);
   }
@@ -132,7 +130,6 @@ void External::push_external_clause_and_witness_on_extension_stack (
   for (const auto &ilit : *c) {
     int elit = internal->externalize(ilit);
     assert (elit != INT_MIN);
-    init (abs (elit));
     extension.push_back (elit);
   }
 }

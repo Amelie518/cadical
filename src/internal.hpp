@@ -308,6 +308,7 @@ struct Internal {
 
   Options opts; // run-time options
   Stats stats;  // statistics
+  Clause *last_irredundant;
 #ifndef QUIET
   Profiles profiles;         // time profiles for various functions
   bool force_phase_messages; // force 'phase (...)' messages
@@ -1641,6 +1642,9 @@ struct Internal {
   double update_profiles (); // Returns 'time ()'.
   void print_profile ();
 #endif
+
+  void check_last_irredundant ();
+  void update_last_irredundant (Clause *);
 
   // Get the value of an internal literal: -1=false, 0=unassigned, 1=true.
   // We use a redundant table for both negative and positive literals.  This

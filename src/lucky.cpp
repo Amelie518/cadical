@@ -118,6 +118,8 @@ int Internal::trivially_false_satisfiable () {
   for (const auto &c : clauses) {
     if (terminated_asynchronously (100))
       return unlucky (-1);
+    if (last_irredundant && c > last_irredundant)
+      break;
     if (c->garbage)
       continue;
     if (c->redundant)
@@ -170,6 +172,8 @@ int Internal::trivially_true_satisfiable () {
   for (const auto &c : clauses) {
     if (terminated_asynchronously (100))
       return unlucky (-1);
+    if (last_irredundant && c > last_irredundant)
+      break;
     if (c->garbage)
       continue;
     if (c->redundant)

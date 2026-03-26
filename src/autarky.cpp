@@ -142,6 +142,8 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
 
   // pre-filtering
   for (auto *c : clauses) {
+    if (last_irredundant && c > last_irredundant)
+      break;
     if (c->garbage)
       continue;
     if (c->redundant)
@@ -203,6 +205,8 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
 
   for (auto *c : clauses) {
     if (!assigned)
+      break;
+    if (last_irredundant && c > last_irredundant)
       break;
     if (c->garbage)
       continue;

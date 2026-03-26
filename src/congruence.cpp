@@ -332,6 +332,8 @@ void Closure::extract_binaries () {
                                       // reallocation possible
     if (d->garbage)
       continue;
+    if (internal->last_irredundant && d > internal->last_irredundant)
+      break;
     if (d->redundant)
       continue;
     if (d->size != 3)
@@ -3093,6 +3095,7 @@ Clause *Closure::maybe_promote_tmp_binary_clause (Clause *c) {
   lrat_chain.push_back (c->id);
   Clause *res = add_binary_clause (c->literals[0], c->literals[1]);
   LOG (res, "promoted to");
+  internal->update_last_irredundant(c);
   return res;
 }
 
@@ -3379,6 +3382,8 @@ void Closure::extract_and_gates () {
     // we can learn new binary clauses, but so no for loop
     assert (lrat_chain.empty ());
     Clause *c = internal->clauses[i];
+    if (internal->last_irredundant && c > internal->last_irredundant)
+      break;
     if (c->garbage)
       continue;
     if (c->size == 2)
@@ -4019,6 +4024,8 @@ void Closure::init_xor_gate_extraction (std::vector<Clause *> &candidates) {
 
   for (auto c : internal->clauses) {
     LOG (c, "considering clause for XOR");
+    if (internal->last_irredundant && c > internal->last_irredundant)
+      break;
     if (c->redundant)
       continue;
     if (c->garbage)
@@ -5042,6 +5049,8 @@ void Closure::forward_subsume_matching_clauses () {
   for (auto *c : internal->clauses) {
     if (c->garbage)
       continue;
+    if (internal->last_irredundant && c > internal->last_irredundant)
+      break;
     if (c->redundant)
       continue;
     if (c->size == 2)
@@ -5151,6 +5160,7 @@ void Closure::subsume_clause (Clause *subsuming, Clause *subsumed) {
   assert (stats.added.redundant > 0);
   stats.added.redundant--;
   // ... and keep 'stats.added.total'.
+  internal->update_last_irredundant (subsuming);
 }
 
 bool Closure::find_subsuming_clause (Clause *subsumed) {
@@ -7254,6 +7264,8 @@ void Closure::init_ite_gate_extraction (
   for (auto c : internal->clauses) {
     if (c->garbage)
       continue;
+    if (internal->last_irredundant && c > internal->last_irredundant)
+      break;
     if (c->redundant)
       continue;
     if (c->size < 3)

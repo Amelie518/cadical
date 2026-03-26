@@ -320,10 +320,13 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   LOG ("autarky removed %d clauses", removed);
 }
 
-bool Internal::autarky () {
+bool Internal::autarky (char c) {
   assert (!level);
   if (!opts.autarkies)
     return false;
+  if (delay_autarky.bumpreasons.delay ()) {
+     delay_autarky.bumpreasons.reduce_delay ();
+  }
   START (autarky);
 
   std::vector<signed char> autarky_val; autarky_val.resize (2*max_var + 2);
@@ -332,10 +335,11 @@ bool Internal::autarky () {
   ++stats.autarkies.tries;
   int autarky_found = determine_autarky(autarky_val, work);
   if (!autarky_found){
+    delay_autarky.bumpreasons.bump_delay ();
     STOP (autarky);
     return false;
   }
-
+  delay_autarky.bumpreasons.reduce_delay ();
   std::vector<int> actual_autarky; actual_autarky.reserve (autarky_found);
   const bool full_aut = !opts.autarkynonincr;
 
@@ -370,7 +374,7 @@ bool Internal::autarky () {
   stats.autarkies.eliminated += autarky_found;
   //mark_redundant_clauses_with_eliminated_variables_as_garbage ();
   connect_watches();
-  report ('a');
+  report (c);
   STOP (autarky);
   return autarky_found;
 }

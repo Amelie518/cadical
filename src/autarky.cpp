@@ -200,6 +200,13 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
   }
 #endif
 
+  if (assigned) {
+    LOG ("second stage autarky of size %d", assigned);
+  }   else {
+    LOG ("empty autarky");
+    return false;
+  }
+
   // final pass. This requires a full-watched literal scheme.
   clear_watches();
 

@@ -124,7 +124,9 @@ unsigned Internal::autarky_propagate (std::vector<signed char> &autarky_val, std
 
 int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vector<int> &work) {
   unsigned assigned = 0;
-  const bool target = (opts.target > 1 || (stable && opts.target));
+  clear_watches ();
+  connect_binary_watches ();
+  const bool target = false && (opts.target > 1 || (stable && opts.target));
   // importing phases
   for (auto idx : vars) {
     autarky_val[vlit (idx)] = 0;
@@ -176,8 +178,10 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
 
   if (assigned) {
     LOG ("preliminary autarky of size %d", assigned);
-  }   else {
+  } else {
     LOG ("empty autarky");
+    clear_watches();
+    connect_watches ();
     return false;
   }
 
@@ -203,7 +207,7 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
       continue;
     // first just do the binary watches for speed
     assigned -= autarky_propagate_unassigned_binary (autarky_val, work, lit);
-    work.push_back(lit);
+    //work.push_back(lit);
     assigned -= autarky_propagate (autarky_val, work);
   }
 
@@ -222,11 +226,12 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
     LOG ("second stage autarky of size %d", assigned);
   }   else {
     LOG ("empty autarky");
+    clear_watches();
+    connect_watches ();
     return false;
   }
 
   // final pass. This requires a full-watched literal scheme.
-  clear_watches();
 
   for (auto *c : clauses) {
     if (!assigned)
@@ -285,8 +290,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
 
   int removed = 0;
   bool compact = opts.autarkynonincr;
-  if (!compact)
-    LOG (actual_autarky, "the autarky is ");
+  LOG (actual_autarky, "the autarky is ");
 
   for (auto *c : clauses) {
     if (c->garbage)
@@ -350,7 +354,10 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
 }
 
 bool Internal::autarky (char c) {
-  assert (!level);
+  if (unsat)
+    return false;
+  if (level) // conflict during warmup
+    return false;
   if (!opts.autarkies)
     return false;
   if (delay->bumpreasons.interval > 10){
@@ -379,6 +386,7 @@ bool Internal::autarky (char c) {
   std::vector<int> actual_autarky; actual_autarky.reserve (autarky_found);
   const bool full_aut = !opts.autarkynonincr;
 
+  STOP (autarkydetermine);
   START (autarkyapply);
   for (auto idx : vars) {
     if (!active (idx))
@@ -400,12 +408,13 @@ bool Internal::autarky (char c) {
   autarky_apply (autarky_val, actual_autarky);
 
 
-    for (auto idx : vars) {
-      if (!autarky_val [vlit (idx)])
-        continue;
-      assert (active (idx));
-      mark_eliminated (idx);
-    }
+  for (auto idx : vars) {
+    if (!autarky_val [vlit (idx)])
+      continue;
+    assert (active (idx));
+    mark_eliminated (idx);
+  }
+  STOP (autarkyapply);
   ++stats.autarkies.successful;
   stats.autarkies.eliminated += autarky_found;
   //mark_redundant_clauses_with_eliminated_variables_as_garbage ();

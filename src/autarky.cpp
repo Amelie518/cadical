@@ -364,7 +364,7 @@ bool Internal::autarky (char c) {
     delay->bumpreasons.limit = 0;
     delay->bumpreasons.interval = 10;
   }
-  if (delay_autarky.bumpreasons.delay ()) {
+  if (opts.autarkydelay && delay_autarky.bumpreasons.delay ()) {
      delay_autarky.bumpreasons.reduce_delay ();
      return false;
   }

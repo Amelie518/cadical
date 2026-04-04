@@ -388,7 +388,8 @@ void Internal::rephase () {
          "new rephase limit %" PRId64 " after %" PRId64 " conflicts",
          lim.rephase, delta);
 
-  autarky('z');
+  if (opts.autarkyafter)
+    autarky('z');
   // This will trigger to report the effect of this new set of phases at the
   // 'backtrack' (actually 'update_target_and_best') after the next
   // conflict, as well as resetting 'best_assigned' then to allow to compute

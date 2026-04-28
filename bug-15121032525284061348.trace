@@ -1,0 +1,1075 @@
+0 init
+1 set walk 0
+2 set check 1
+3 set arena 0
+4 set autarkies 1
+5 set backbonerounds 2
+6 set block 1
+7 set blockminclslim 2
+8 set blockocclim 1
+9 set bumpreason 1
+10 set bumpreasonrate 3
+11 set chronoreusetrail 0
+12 set compactmin 1
+13 set conditioneffort 2
+14 set conditionint 4
+15 set conditionmineff 0
+16 set congruenceandarity 2
+17 set congruencexorarity 4
+18 set congruencexorcounts 4
+19 set covermaxeff 1
+20 set decomposerounds 1
+21 set eagersubsume 1
+22 set elimands 0
+23 set elimdef 0
+24 set elimequivs 1
+25 set elimfactor 1
+26 set elimites 0
+27 set elimlimited 0
+28 set elimocclim 4
+29 set elimsum 0
+30 set elimxorlim 3
+31 set elimxors 1
+32 set emadecisions 1
+33 set emagluefast 1
+34 set exteagerreasons 0
+35 set exteagerrecalc 0
+36 set factor 1
+37 set factorbumpheap 1
+38 set factoreffort 0
+39 set factoriniticks 1
+40 set factorthresh 0
+41 set factorxorsave 1
+42 set fastelimfactor 1
+43 set incdecayint 5
+44 set inprobing 1
+45 set instantiateclslim 3
+46 set lidrup 1
+47 set lrat 1
+48 set luckylate 1
+49 set minimizeticks 1
+50 set phase 1
+51 set preprocesslight 0
+52 set probehbr 1
+53 set profile 0
+54 set radixsortlim 0
+55 set randecfocused 0
+56 set randecinit 3
+57 set randecint 0
+58 set randeclength 1
+59 set randecstable 1
+60 set recomputetier 1
+61 set reducetier1glue 2
+62 set reducetier2glue 1
+63 set rephaseint 2
+64 set report 0
+65 set restart 1
+66 set restartmarginfocused 1
+67 set score 0
+68 set shuffle 0
+69 set stats 1
+70 set subsume 0
+71 set sweepclauses 0
+72 set sweepcountbinary 1
+73 set sweepfliprounds 1
+74 set sweepmaxvars 5
+75 set ternary 0
+76 set tier1minglue 2
+77 set tier2minglue 84
+78 set varkeepname 0
+79 set veripb 2
+80 set vivifycalctier 0
+81 set vivifydemote 1
+82 set vivifyeffort 1
+83 set vivifyflush 1
+84 set vivifyonce 1
+85 set vivifytier2 1
+86 set vivifytier3eff 2
+87 set arena 1
+88 add 1
+89 add -9
+90 add -2
+91 add -5
+92 add 0
+93 add 5
+94 add 1
+95 add -2
+96 add 7
+97 add 0
+98 add 7
+99 add 4
+100 add 10
+101 add 9
+102 add 0
+103 add -4
+104 add 6
+105 add -7
+106 add -5
+107 add 0
+108 add 12
+109 add -4
+110 add -2
+111 add 8
+112 add 0
+113 add -12
+114 add 2
+115 add 4
+116 add -11
+117 add 0
+118 add -12
+119 add 8
+120 add -9
+121 add -1
+122 add 0
+123 add -12
+124 add -4
+125 add 8
+126 add 9
+127 add 0
+128 add 4
+129 add 6
+130 add -1
+131 add -5
+132 add 0
+133 add 4
+134 add 12
+135 add 5
+136 add 7
+137 add 0
+138 add 6
+139 add -2
+140 add -12
+141 add 7
+142 add 0
+143 add 10
+144 add -1
+145 add 4
+146 add 5
+147 add 0
+148 add -10
+149 add -4
+150 add -6
+151 add -12
+152 add 0
+153 add 10
+154 add -12
+155 add 1
+156 add -8
+157 add 0
+158 propagate 0
+159 add 7
+160 add -5
+161 add 10
+162 add 3
+163 add 0
+164 active
+165 add 3
+166 add -8
+167 add 2
+168 add 10
+169 add 0
+170 add -10
+171 add -6
+172 add -11
+173 add 3
+174 add 0
+175 resize 12
+176 add -8
+177 add -6
+178 add -11
+179 add -7
+180 add 0
+181 add -4
+182 add -9
+183 add -3
+184 add 6
+185 add 0
+186 add 4
+187 add -12
+188 add 10
+189 add -6
+190 add 0
+191 add -8
+192 add -4
+193 add 3
+194 add 2
+195 add 0
+196 add -8
+197 add -9
+198 add 5
+199 add 1
+200 add 0
+201 add -11
+202 add -7
+203 add 1
+204 add -6
+205 add 0
+206 add -11
+207 add 6
+208 add 1
+209 add 9
+210 add 0
+211 add -7
+212 add 8
+213 add -4
+214 add -5
+215 add 0
+216 add 2
+217 add 12
+218 add -11
+219 add -7
+220 add 0
+221 add 4
+222 add -11
+223 add 1
+224 add 8
+225 add 0
+226 add -4
+227 add -1
+228 add 10
+229 add 7
+230 add 0
+231 add 7
+232 add 1
+233 add -6
+234 add -5
+235 add 0
+236 add -1
+237 add -8
+238 add -6
+239 add -4
+240 add 0
+241 add -3
+242 add 9
+243 add -4
+244 add -10
+245 add 0
+246 add 6
+247 add -10
+248 add -12
+249 add -4
+250 add 0
+251 add 6
+252 add 10
+253 add -3
+254 add -9
+255 add 0
+256 add 6
+257 add 5
+258 add 12
+259 add -8
+260 add 0
+261 add 4
+262 add -7
+263 add -12
+264 add -5
+265 add 0
+266 active
+267 add -1
+268 add 2
+269 add 4
+270 add 8
+271 add 0
+272 irredundant
+273 add -7
+274 add -1
+275 add -8
+276 add -5
+277 add 0
+278 add 2
+279 add 6
+280 add 3
+281 add -8
+282 add 0
+283 add -9
+284 add -3
+285 add -5
+286 add 12
+287 add 0
+288 add -10
+289 add 8
+290 add 9
+291 add -11
+292 add 0
+293 add 10
+294 add 3
+295 add 11
+296 add -4
+297 add 0
+298 add -3
+299 add -5
+300 add -2
+301 add -10
+302 add 0
+303 add -5
+304 add 10
+305 add -6
+306 add 8
+307 add 0
+308 add -12
+309 add -5
+310 add 11
+311 add 10
+312 add 0
+313 add 1
+314 add -10
+315 add 6
+316 add -8
+317 add 0
+318 add 2
+319 add -5
+320 add -9
+321 add -11
+322 add 0
+323 add -8
+324 add -1
+325 add -5
+326 add 12
+327 add 0
+328 add 8
+329 add 11
+330 add -1
+331 add 7
+332 add 0
+333 add -10
+334 add 7
+335 add -8
+336 add 1
+337 add 0
+338 add -3
+339 add -8
+340 add -4
+341 add 12
+342 add 0
+343 add -7
+344 add 8
+345 add 11
+346 add 5
+347 add 0
+348 vars
+349 add -9
+350 add -10
+351 add 6
+352 add 8
+353 add 0
+354 add 10
+355 add 9
+356 add 12
+357 add 8
+358 add 0
+359 add 10
+360 add -2
+361 add -6
+362 add 5
+363 add 0
+364 add -10
+365 add 5
+366 add 6
+367 add -7
+368 add 0
+369 add -11
+370 add 1
+371 add 3
+372 add 9
+373 add 0
+374 add -8
+375 add 5
+376 add -9
+377 add -10
+378 add 0
+379 add 2
+380 add -7
+381 add 10
+382 add 6
+383 add 0
+384 add 12
+385 add -8
+386 add 2
+387 add 3
+388 add 0
+389 add -5
+390 add 11
+391 add -4
+392 add 2
+393 add 0
+394 add -12
+395 add -2
+396 add -5
+397 add 4
+398 add 0
+399 add 5
+400 add -6
+401 add -3
+402 add 9
+403 add 0
+404 irredundant
+405 add 9
+406 add 1
+407 add 5
+408 add -2
+409 add 0
+410 declare_more_variables 74
+411 add 5
+412 add 10
+413 add 8
+414 add 3
+415 add 0
+416 declare_one_more_variable
+417 add -4
+418 add -11
+419 add 1
+420 add -10
+421 add 0
+422 add -7
+423 add -9
+424 add 6
+425 add 8
+426 add 0
+427 add -12
+428 add 4
+429 add -8
+430 add 7
+431 add 0
+432 add -1
+433 add -7
+434 add 9
+435 add 12
+436 add 0
+437 add -9
+438 add -2
+439 add -8
+440 add 7
+441 add 0
+442 add -3
+443 add 5
+444 add -8
+445 add -4
+446 add 0
+447 add 10
+448 add 4
+449 add 11
+450 add 6
+451 add 0
+452 add -11
+453 add 8
+454 add -3
+455 add 9
+456 add 0
+457 add 6
+458 add 8
+459 add -1
+460 add 11
+461 add 0
+462 add -4
+463 add -3
+464 add 2
+465 add 5
+466 add 0
+467 add 10
+468 add -3
+469 add -6
+470 add -2
+471 add 0
+472 add -10
+473 add -9
+474 add -4
+475 add -8
+476 add 0
+477 add 3
+478 add 6
+479 add -2
+480 add 8
+481 add 0
+482 add -11
+483 add -9
+484 add 5
+485 add -1
+486 add 0
+487 add -11
+488 add -12
+489 add -2
+490 add 7
+491 add 0
+492 add -6
+493 add 11
+494 add 3
+495 add -10
+496 add 0
+497 add -10
+498 add -12
+499 add -3
+500 add -11
+501 add 0
+502 add 5
+503 add 4
+504 add -11
+505 add 12
+506 add 0
+507 add -4
+508 add -8
+509 add 2
+510 add 5
+511 add 0
+512 active
+513 add 2
+514 add -7
+515 add -10
+516 add -5
+517 add 0
+518 add 2
+519 add 4
+520 add -6
+521 add -7
+522 add 0
+523 add 12
+524 add -6
+525 add 9
+526 add -8
+527 add 0
+528 add -1
+529 add 5
+530 add 6
+531 add 2
+532 add 0
+533 add 5
+534 add -4
+535 add -10
+536 add -8
+537 add 0
+538 add -9
+539 add 4
+540 add 1
+541 add 3
+542 add 0
+543 add 8
+544 add -11
+545 add -12
+546 add -9
+547 add 0
+548 add 5
+549 add -8
+550 add 11
+551 add -6
+552 add 0
+553 add 7
+554 add 2
+555 add 5
+556 add 1
+557 add 0
+558 add 8
+559 add 2
+560 add 7
+561 add 3
+562 add 0
+563 redundant
+564 add -12
+565 add -9
+566 add 8
+567 add 2
+568 add 0
+569 add 8
+570 add -3
+571 add -1
+572 add -9
+573 add 0
+574 add -10
+575 add -12
+576 add 11
+577 add 3
+578 add 0
+579 add 1
+580 add 12
+581 add 7
+582 add 9
+583 add 0
+584 add 3
+585 add 12
+586 add -2
+587 add -8
+588 add 0
+589 add -11
+590 add 9
+591 add -1
+592 add -10
+593 add 0
+594 add -9
+595 add -2
+596 add 5
+597 add -12
+598 add 0
+599 add -3
+600 add 7
+601 add -2
+602 add -9
+603 add 0
+604 irredundant
+605 add -8
+606 add 11
+607 add -4
+608 add -9
+609 add 0
+610 add 7
+611 add 11
+612 add -1
+613 add 2
+614 add 0
+615 active
+616 add -7
+617 add -2
+618 add -6
+619 add -9
+620 add 0
+621 add -4
+622 add 7
+623 add 9
+624 add 11
+625 add 0
+626 add -8
+627 add 5
+628 add 1
+629 add 3
+630 add 0
+631 add 1
+632 add 6
+633 add -5
+634 add 11
+635 add 0
+636 irredundant
+637 add -2
+638 add -3
+639 add 11
+640 add -7
+641 add 0
+642 add 10
+643 add -7
+644 add 12
+645 add 6
+646 add 0
+647 assume -9
+648 assume 3
+649 assume 10
+650 assume -11
+651 assume -4
+652 assume -1
+653 assume -14
+654 assume -2
+655 assume 7
+656 assume 5
+657 assume 13
+658 assume -6
+659 freeze 1
+660 freeze 2
+661 freeze 4
+662 freeze -5
+663 freeze 6
+664 freeze 7
+665 freeze 8
+666 freeze -9
+667 freeze 10
+668 phase 1
+669 phase 9
+670 solve 0
+671 flip 1 0
+672 flip 3 0
+673 flippable 4 0
+674 flippable -5 0
+675 flip -6 0
+676 flippable -7 0
+677 flip 8 0
+678 flip 9 0
+679 flip 11 0
+680 flippable 12 0
+681 failed 1 0
+682 failed -5 0
+683 failed 7 0
+684 frozen 3 0
+685 frozen 6 0
+686 frozen 10 0
+687 frozen 12 0
+688 frozen -18 0
+689 add 22
+690 add -24
+691 add 18
+692 add 0
+693 add -20
+694 add 21
+695 add 14
+696 add 0
+697 add 12
+698 add 19
+699 add 15
+700 add 0
+701 add 23
+702 add -20
+703 add 14
+704 add 0
+705 add -16
+706 add 24
+707 add 20
+708 add 0
+709 add 24
+710 add 7
+711 add 21
+712 add 0
+713 add -9
+714 add 18
+715 add 22
+716 add 0
+717 add 24
+718 add 12
+719 add 13
+720 add 0
+721 add 22
+722 add 23
+723 add 15
+724 add 0
+725 resize 10
+726 add 20
+727 add 13
+728 add 15
+729 add 0
+730 add -15
+731 add -9
+732 add -20
+733 add 0
+734 add 20
+735 add -16
+736 add 10
+737 add 0
+738 resize 23
+739 add -20
+740 add 16
+741 add -19
+742 add 0
+743 active
+744 add 19
+745 add -23
+746 add 11
+747 add 0
+748 add 11
+749 add 16
+750 add 25
+751 add 0
+752 add -22
+753 add 16
+754 add 13
+755 add 0
+756 add 21
+757 add -10
+758 add -12
+759 add 0
+760 add -21
+761 add -24
+762 add 11
+763 add 0
+764 add -24
+765 add 14
+766 add -20
+767 add 0
+768 add 23
+769 add -17
+770 add 16
+771 add 0
+772 add 24
+773 add 19
+774 add 7
+775 add 0
+776 add 21
+777 add 17
+778 add 22
+779 add 0
+780 add 12
+781 add -22
+782 add -7
+783 add 0
+784 add -12
+785 add 10
+786 add 21
+787 add 0
+788 add -16
+789 add -22
+790 add 25
+791 add 0
+792 add -8
+793 add -19
+794 add -24
+795 add 0
+796 add 18
+797 add 24
+798 add 15
+799 add 0
+800 add 9
+801 add 11
+802 add -22
+803 add 0
+804 add -19
+805 add 13
+806 add 18
+807 add 0
+808 add 25
+809 add -10
+810 add -21
+811 add 0
+812 redundant
+813 add 12
+814 add -20
+815 add -10
+816 add 0
+817 add 22
+818 add 25
+819 add 23
+820 add 0
+821 active
+822 add -7
+823 add 24
+824 add 19
+825 add 0
+826 add 8
+827 add 23
+828 add 14
+829 add 0
+830 add -10
+831 add 17
+832 add 15
+833 add 0
+834 propagate 0
+835 add -11
+836 add -15
+837 add -7
+838 add 0
+839 add -12
+840 add -23
+841 add 22
+842 add 0
+843 active
+844 add -10
+845 add 10
+846 add -20
+847 add 0
+848 add 22
+849 add 18
+850 add -21
+851 add 0
+852 add 21
+853 add -18
+854 add 20
+855 add 0
+856 add -21
+857 add 9
+858 add -25
+859 add 0
+860 add -16
+861 add 9
+862 add -19
+863 add 0
+864 add -17
+865 add 15
+866 add 7
+867 add 0
+868 add -8
+869 add 17
+870 add 16
+871 add 0
+872 add 20
+873 add 8
+874 add -15
+875 add 0
+876 add -18
+877 add -19
+878 add 7
+879 add 0
+880 add 14
+881 add 23
+882 add 22
+883 add 0
+884 add 12
+885 add -16
+886 add -21
+887 add 0
+888 add -13
+889 add 18
+890 add 25
+891 add 0
+892 add -12
+893 add -22
+894 add -8
+895 add 0
+896 add -24
+897 add 19
+898 add -16
+899 add 0
+900 add -24
+901 add -13
+902 add -23
+903 add 0
+904 add -19
+905 add -10
+906 add -23
+907 add 0
+908 add 16
+909 add -9
+910 add -25
+911 add 0
+912 add -11
+913 add 7
+914 add -22
+915 add 0
+916 add -8
+917 add -12
+918 add 24
+919 add 0
+920 active
+921 add 16
+922 add 9
+923 add 25
+924 add 0
+925 add -25
+926 add 10
+927 add 9
+928 add 0
+929 add -12
+930 add 9
+931 add -14
+932 add 0
+933 add 7
+934 add 23
+935 add -18
+936 add 0
+937 add 14
+938 add 8
+939 add -23
+940 add 0
+941 active
+942 add -14
+943 add -21
+944 add 23
+945 add 0
+946 add 19
+947 add 8
+948 add -16
+949 add 0
+950 add 9
+951 add -25
+952 add 18
+953 add 0
+954 add -9
+955 add 13
+956 add 12
+957 add 0
+958 add 19
+959 add -17
+960 add 23
+961 add 0
+962 add -11
+963 add 10
+964 add 15
+965 add 0
+966 add -12
+967 add 15
+968 add 8
+969 add 0
+970 add -21
+971 add -20
+972 add -13
+973 add 0
+974 add -7
+975 add -24
+976 add 12
+977 add 0
+978 add -19
+979 add -20
+980 add 24
+981 add 0
+982 add 24
+983 add -25
+984 add 23
+985 add 0
+986 add 7
+987 add 18
+988 add -9
+989 add 0
+990 add -15
+991 add 12
+992 add 19
+993 add 0
+994 add -14
+995 add -12
+996 add 7
+997 add 0
+998 add 17
+999 add -19
+1000 add -20
+1001 add 0
+1002 melt 1
+1003 melt 2
+1004 melt -4
+1005 melt -5
+1006 melt -6
+1007 melt -7
+1008 melt 8
+1009 melt 9
+1010 melt 10
+1011 freeze 1
+1012 freeze -2
+1013 freeze -3
+1014 freeze -4
+1015 freeze 5
+1016 freeze -6
+1017 freeze -7
+1018 freeze -8
+1019 freeze -9
+1020 freeze 10
+1021 freeze -11
+1022 freeze -12
+1023 freeze -13
+1024 freeze 14
+1025 freeze 15
+1026 freeze 16
+1027 freeze 17
+1028 freeze -18
+1029 freeze -19
+1030 freeze -20
+1031 freeze -21
+1032 freeze -22
+1033 freeze 23
+1034 freeze -24
+1035 freeze -25
+1036 phase 2
+1037 phase 3
+1038 phase -4
+1039 phase -5
+1040 phase 6
+1041 phase 7
+1042 phase 8
+1043 phase 9
+1044 phase 10
+1045 phase 11
+1046 phase -13
+1047 phase 14
+1048 phase 15
+1049 phase 16
+1050 phase -17
+1051 phase 18
+1052 phase 19
+1053 phase -20
+1054 phase -21
+1055 phase -22
+1056 phase -23
+1057 phase -24
+1058 phase -25
+1059 solve 0
+1060 val -1 0
+1061 val -5 0
+1062 val 8 0
+1063 val -9 0
+1064 val -10 0
+1065 val -13 0
+1066 val -14 1
+1067 val -15 1
+1068 val -17 1
+1069 val 18 1
+1070 val -20 0
+1071 frozen -1 0
+1072 frozen -2 0
+1073 frozen -11 0
+1074 reset

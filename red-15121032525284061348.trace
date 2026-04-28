@@ -1,0 +1,66 @@
+0 init
+1 set autarkies 1
+2 set phase 0
+3 set preprocesslight 0
+4 set rephaseint 1
+5 add 7
+6 add -5
+7 add 0
+8 add -6
+9 add -11
+10 add 0
+11 add -3
+12 add -5
+13 add -10
+14 add 0
+15 add 6
+16 add -8
+17 add 0
+18 add 8
+19 add 11
+20 add 0
+21 add -11
+22 add 8
+23 add 9
+24 add 0
+25 add 10
+26 add -3
+27 add 0
+28 add 3
+29 add 6
+30 add 0
+31 add -9
+32 add 5
+33 add 0
+34 add -6
+35 add 3
+36 add 0
+37 add -8
+38 add 11
+39 add 0
+40 phase 1
+41 phase 9
+42 solve 0
+43 phase 2
+44 phase 3
+45 phase -4
+46 phase -5
+47 phase 6
+48 phase 7
+49 phase 8
+50 phase 9
+51 phase 10
+52 phase 11
+53 phase -13
+54 phase 14
+55 phase 15
+56 phase 16
+57 phase -17
+58 phase 18
+59 phase 19
+60 phase -20
+61 phase -21
+62 phase -22
+63 phase -23
+64 phase -24
+65 phase -25

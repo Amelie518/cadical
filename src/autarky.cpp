@@ -285,6 +285,31 @@ int Internal::determine_autarky (std::vector<signed char> &autarky_val, std::vec
   return assigned;
 }
 
+struct UnionFind {
+  std::vector<int> parent;
+  // initalising, every variable points to itself
+  UnionFind(int n) {
+    parent.resize(n+1);
+    for (int i = 0; i <= n; ++i) {
+      parent[i] = i;
+    }
+  }
+  // returns class (root) of var i
+  int find(int i) {
+    if (parent[i] == i) return i;
+    return parent[i] = find(parent[i]);
+  }
+
+  void unite(int i, int j) {
+    int root_i = find(i);
+    int root_j = find(j);
+    if (root_i != root_j) {
+      parent[root_i] = root_j;
+    }
+  }
+
+};
+
 void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
                               const std::vector<int> &actual_autarky) {
 

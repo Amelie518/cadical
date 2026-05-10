@@ -1,5 +1,5 @@
 #include "internal.hpp"
-
+#include <map>
 namespace CaDiCaL {
 // Algorithm to find autarkies based on the phases.  For incremental SAT solving, this can be a
 // bootleneck, because the witness for the reconstruction stack can be huge.
@@ -311,11 +311,39 @@ struct UnionFind {
 };
 
 void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
-                              const std::vector<int> &actual_autarky) {
-
+                              const std::vector<int> &actual_autarky) {                            
   int removed = 0;
   bool compact = opts.autarkynonincr;
   LOG (actual_autarky, "the autarky is ");
+  
+  // initialise unionfind
+  UnionFind uf(max_var);
+  //for every clause unite all vars present in clause                              
+  for (auto *c: clauses) {
+    if (c->garbage || c-> redundant)
+      continue;
+    int first_var = 0;
+    for (auto lit: *c) {
+      int v = abs(lit);
+      if(autarky_val[vlit(lit)] != 0) { //literal does belong to autarky
+        if (first_var == 0) {
+          first_var = v;
+        } else {
+          uf.unite(first_var, v);
+        }
+      }
+    }
+  }
+
+  std::map<int, std::vector<int>> partitions;
+  for (int lit: actual_autarky) {
+    int root = uf.find(abs(lit));
+    partitions[root].push_back(lit);
+  }
+
+  if (partitions.size()>1) {
+    MSG("Autarky Decompostiton: Split %zu literals into %zu indeüendent omegas", actual_autarky.size(), partitions.size());
+  }
 
   for (auto *c : clauses) {
     if (c->garbage)

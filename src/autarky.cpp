@@ -340,11 +340,14 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     int root = uf.find(abs(lit));
     partitions[root].push_back(lit);
   }
-
+  MSG("partition size: %zu", partitions.size());
   if (partitions.size()>1) {
     MSG("Autarky Decompostiton: Split %zu literals into %zu indeüendent omegas", actual_autarky.size(), partitions.size());
+    for (const auto &p : partitions)
+    MSG ("size of %d: %d", p.first, p.second.size ());
   }
-
+assert (!partitions.empty());
+//COVER (partitions.size () > 2);
   for (auto *c : clauses) {
     if (c->garbage)
       continue;

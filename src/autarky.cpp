@@ -351,6 +351,7 @@ assert (!partitions.empty());
   for (auto *c : clauses) {
     if (c->garbage)
       continue;
+    int clause_root = -1;
 #ifndef NDEBUG
     bool satisfied = false;
     bool falsified = false;
@@ -359,6 +360,7 @@ assert (!partitions.empty());
     for (auto lit : *c) {
       const signed char v = autarky_val [vlit (lit)];
       touched = (touched || v);
+      clause_root = uf.find(abs(lit));
 #ifndef NDEBUG
       if (v > 0) {
         satisfied = true; break;
@@ -384,7 +386,8 @@ assert (!partitions.empty());
       if (!compact) {
         if (proof)
           proof->weaken_minus(c);
-        std::vector<int> witness = actual_autarky;
+        assert(clause_root != -1);
+        std::vector<int> witness = partitions[clause_root];
         external->push_external_clause_and_witness_on_extension_stack(c, std::move (witness));
       }
       LOG (c, "autarky removed satisfied clause");
@@ -395,14 +398,20 @@ assert (!partitions.empty());
 
   MSG ("autarky applied");
   if (compact) {
-    for (auto var : vars) {
-      const signed char v = autarky_val [vlit (var)];
-      if (!v)
-        continue;
-      assert (v == 1 || v == -1);
-      int lit = v * var;
-      // fake id!
-      external->push_external_clause_and_witness_on_extension_stack({lit}, {lit}, var);
+    //for (auto var : vars) {
+    //  const signed char v = autarky_val [vlit (var)];
+    //  if (!v)
+    //    continue;
+    //  assert (v == 1 || v == -1);
+    //  int lit = v * var;
+    //  // fake id!
+    //  external->push_external_clause_and_witness_on_extension_stack({lit}, {lit}, var);
+    //}
+    for (const auto &p : partitions) {
+      for (int lit : p.second) {
+        int var = abs(lit);
+        external->push_external_clause_and_witness_on_extension_stack({lit}, p.second, var);
+      }
     }
   }
 

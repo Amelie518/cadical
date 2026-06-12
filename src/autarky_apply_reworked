@@ -1,0 +1,98 @@
+void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
+                              const std::vector<int> &actual_autarky) {                            
+  int removed = 0;
+  bool compact = opts.autarkynonincr;
+  LOG (actual_autarky, "the autarky is ");
+  
+  // initialise unionfind
+  UnionFind uf(max_var);
+  //for every clause unite all vars present in clause                              
+  for (auto *c: clauses) {
+    if (c->garbage || c-> redundant)
+      continue;
+    int first_var = c->literals[0];
+    for (auto it = c->begin () + 1; it != c->end(); ++it) {
+      int lit = *it;
+      int v = abs(lit);
+      if(autarky_val[vlit(lit)] != 0) { //literal does belong to autarky
+          uf.unite(first_var, v);
+      }
+    }
+  }
+
+  std::unordered_map<int, std::vector<int>> partitions;
+  for (int lit: actual_autarky) {
+    int root = uf.find(abs(lit));
+    partitions[root].push_back(lit);
+  }
+  MSG("partition size: %zu", partitions.size());
+  if (partitions.size()>1) {
+    MSG("Autarky Decompostiton: Split %zu literals into %zu independent omegas", actual_autarky.size(), partitions.size());
+    for (const auto &p : partitions)
+    MSG ("size of %d: %d", p.first, p.second.size ());
+    stats.autarkies.saved += actual_autarky.size()- partitions.size();
+  }
+assert (!partitions.empty());
+//COVER (partitions.size () > 2);
+  for (auto *c : clauses) {
+    if (c->garbage)
+      continue;
+    int clause_root = 0;
+#ifndef NDEBUG
+    bool satisfied = false;
+    bool falsified = false;
+#endif
+    bool touched = false;
+    for (auto lit : *c) {
+      const signed char v = autarky_val [vlit (lit)];
+      touched = (touched || v);
+      clause_root = uf.find(abs(lit));
+#ifndef NDEBUG
+      if (v > 0) {
+        satisfied = true; break;
+      }
+      if (v < 0) {
+        falsified = true;
+        continue;
+      }
+#endif
+    if (v)
+      break;
+    }
+    LOG (c, "clause");
+    assert (c->redundant || !falsified || satisfied);
+    assert (c->redundant || touched == satisfied);
+    if (c->redundant && touched) {
+      LOG (c, "delete touched clause");
+      mark_garbage (c);
+      continue;
+    }
+    if (touched) {
+      assert (!c->redundant);
+      if (!compact) {
+        if (proof)
+          proof->weaken_minus(c);
+        assert(clause_root);
+        std::vector<int> witness = partitions[clause_root];
+        external->push_external_clause_and_witness_on_extension_stack(c, std::move (witness));
+      }
+      LOG (c, "autarky removed satisfied clause");
+      mark_garbage (c);
+      ++removed;
+    }
+  }
+
+  MSG ("autarky applied");
+  if (compact) {
+    for (auto var : vars) {
+      const signed char v = autarky_val [vlit (var)];
+      if (!v)
+        continue;
+      assert (v == 1 || v == -1);
+      int lit = v * var;
+      // fake id!
+      external->push_external_clause_and_witness_on_extension_stack({lit}, {lit}, var);
+    }
+  }
+  LOG ("autarky removed %d clauses", removed);
+}

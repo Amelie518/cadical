@@ -335,16 +335,17 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     }
   }
 
-  std::map<int, std::vector<int>> partitions;
+  std::unordered_map<int, std::vector<int>> partitions;
   for (int lit: actual_autarky) {
     int root = uf.find(abs(lit));
     partitions[root].push_back(lit);
   }
   MSG("partition size: %zu", partitions.size());
   if (partitions.size()>1) {
-    MSG("Autarky Decompostiton: Split %zu literals into %zu indeüendent omegas", actual_autarky.size(), partitions.size());
+    MSG("Autarky Decompostiton: Split %zu literals into %zu independent omegas", actual_autarky.size(), partitions.size());
     for (const auto &p : partitions)
     MSG ("size of %d: %d", p.first, p.second.size ());
+    stats.autarkies.saved += actual_autarky.size()- partitions.size();
   }
 assert (!partitions.empty());
 //COVER (partitions.size () > 2);
@@ -398,23 +399,16 @@ assert (!partitions.empty());
 
   MSG ("autarky applied");
   if (compact) {
-    //for (auto var : vars) {
-    //  const signed char v = autarky_val [vlit (var)];
-    //  if (!v)
-    //    continue;
-    //  assert (v == 1 || v == -1);
-    //  int lit = v * var;
-    //  // fake id!
-    //  external->push_external_clause_and_witness_on_extension_stack({lit}, {lit}, var);
-    //}
-    for (const auto &p : partitions) {
-      for (int lit : p.second) {
-        int var = abs(lit);
-        external->push_external_clause_and_witness_on_extension_stack({lit}, p.second, var);
-      }
+    for (auto var : vars) {
+      const signed char v = autarky_val [vlit (var)];
+      if (!v)
+        continue;
+      assert (v == 1 || v == -1);
+      int lit = v * var;
+      // fake id!
+      external->push_external_clause_and_witness_on_extension_stack({lit}, {lit}, var);
     }
   }
-
   LOG ("autarky removed %d clauses", removed);
 }
 

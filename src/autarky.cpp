@@ -318,6 +318,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   
   // initialise unionfind
   UnionFind uf(max_var);
+  std::unordered_set<int> selected;
   //for every clause unite all vars present in clause                              
   for (auto *c: clauses) {
     if (c->garbage || c-> redundant)
@@ -333,6 +334,22 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         }
       }
     }
+  }
+
+  for (auto *c: clauses) {
+    int chosen = 0;
+    bool covered = false;
+    for (auto lit: *c) {
+      if (selected.find(lit) != selected.end()) {
+        covered = true;
+        break;
+      }
+      if(autarky_val[vlit(lit)] > 0 && chosen == 0) {
+        chosen = lit;
+      }
+    }
+    if (!covered)
+      selected.insert(chosen);
   }
 
   std::unordered_map<int, std::vector<int>> partitions;

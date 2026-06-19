@@ -72,6 +72,8 @@ void Stats::print (Internal *internal) {
          stats.autarkies.tries, relative (stats.conflicts, stats.autarkies.tries));
     PRT ("  autarrounds:   %15" PRId64 "   %10.2f    per tried",
          stats.autarkies.successful, relative (stats.autarkies.successful, stats.autarkies.tries));
+    PRT ("  autarsaved:    %15" PRId64 "   %10.2f    per success",
+         stats.autarkies.saved, relative (stats.autarkies.saved, stats.autarkies.successful));
   }
   if (all || stats.blocked) {
     PRT ("blocked:         %15" PRId64

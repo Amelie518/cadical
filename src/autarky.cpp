@@ -348,22 +348,33 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         chosen = lit;
       }
     }
-    if (!covered)
+    if (!covered && chosen)
       selected.insert(chosen);
   }
 
-  std::unordered_map<int, std::vector<int>> partitions;
-  for (int lit: actual_autarky) {
+  // std::unordered_map<int, std::vector<int>> partitions;
+  // for (int lit: actual_autarky) {
+  //   int root = uf.find(abs(lit));
+  //   partitions[root].push_back(lit);
+  // }
+  std::unordered_map<int, std::vector<int>> selected_partitions;
+  for (auto lit: selected) {
     int root = uf.find(abs(lit));
-    partitions[root].push_back(lit);
+    selected_partitions[root].push_back(lit);
   }
-  MSG("partition size: %zu", partitions.size());
-  if (partitions.size()>1) {
-    MSG("Autarky Decompostiton: Split %zu literals into %zu independent omegas", actual_autarky.size(), partitions.size());
-    for (const auto &p : partitions)
+
+  MSG("partition size: %zu", selected_partitions.size());
+  if (selected_partitions.size()>1) {
+    MSG("Autarky Decompostiton: Split %zu literals into %zu independent omegas", actual_autarky.size(), selected_partitions.size());
+    for (const auto &p : selected_partitions)
     MSG ("size of %d: %d", p.first, p.second.size ());
-    stats.autarkies.saved += actual_autarky.size()- partitions.size();
   }
+  // MSG("partition size: %zu", partitions.size());
+  // if (partitions.size()>1) {
+  //   MSG("Autarky Decompostiton: Split %zu literals into %zu independent omegas", actual_autarky.size(), partitions.size());
+  //   for (const auto &p : partitions)
+  //   MSG ("size of %d: %d", p.first, p.second.size ());
+  // }
 assert (!partitions.empty());
 //COVER (partitions.size () > 2);
   for (auto *c : clauses) {
@@ -405,7 +416,8 @@ assert (!partitions.empty());
         if (proof)
           proof->weaken_minus(c);
         assert(clause_root != -1);
-        std::vector<int> witness = partitions[clause_root];
+        std::vector<int> witness = selected_partitions[clause_root];
+        stats.autarkies.saved += actual_autarky.size()- witness.size();
         external->push_external_clause_and_witness_on_extension_stack(c, std::move (witness));
       }
       LOG (c, "autarky removed satisfied clause");

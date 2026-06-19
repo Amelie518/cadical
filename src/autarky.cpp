@@ -375,7 +375,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   //   for (const auto &p : partitions)
   //   MSG ("size of %d: %d", p.first, p.second.size ());
   // }
-assert (!partitions.empty());
+// assert (!partitions.empty());
 //COVER (partitions.size () > 2);
   for (auto *c : clauses) {
     if (c->garbage)

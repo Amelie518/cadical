@@ -318,7 +318,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   
   // initialise unionfind
   UnionFind uf(max_var);
-  std::unordered_set<int> selected;
+  assert (analyzed.empty ());
   //for every clause unite all vars present in clause                              
   for (auto *c: clauses) {
     if (c->garbage || c-> redundant)
@@ -334,31 +334,37 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         }
       }
     }
-  }
-
-  for (auto *c: clauses) {
     int chosen = 0;
     bool covered = false;
     for (auto lit: *c) {
-      if (selected.find(lit) != selected.end()) {
+      if (marked (lit) > 0) {
         covered = true;
+        assert (autarky_val[vlit(lit)]> 0);
         break;
       }
       if(autarky_val[vlit(lit)] > 0 && chosen == 0) {
         chosen = lit;
       }
     }
-    if (!covered && chosen)
-      selected.insert(chosen);
+    if (!covered && chosen) {
+      analyzed.push_back(chosen);
+      assert (!marked (chosen));
+      mark (chosen);
+    }
   }
 
+  for (auto lit : analyzed)
+    unmark (lit);
+
+  for (auto lit : lits)
+    assert (!marked (lit));
   // std::unordered_map<int, std::vector<int>> partitions;
   // for (int lit: actual_autarky) {
   //   int root = uf.find(abs(lit));
   //   partitions[root].push_back(lit);
   // }
   std::unordered_map<int, std::vector<int>> selected_partitions;
-  for (auto lit: selected) {
+  for (auto lit: analyzed) {
     int root = uf.find(abs(lit));
     selected_partitions[root].push_back(lit);
   }
@@ -372,7 +378,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   // MSG("partition size: %zu", partitions.size());
   // if (partitions.size()>1) {
   //   MSG("Autarky Decompostiton: Split %zu literals into %zu independent omegas", actual_autarky.size(), partitions.size());
-  //   for (const auto &p : partitions)
+  //   for (const auto &p : partitions)ssert(!selected_partitions.empty());
   //   MSG ("size of %d: %d", p.first, p.second.size ());
   // }
 // assert (!partitions.empty());
@@ -425,6 +431,8 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       ++removed;
     }
   }
+  // If a literal does not appear anymore in the formula, it will be part of the autarky, but not appear in any partition.
+  assert(!selected_partitions.empty() || !removed);
 
   MSG ("autarky applied");
   if (compact) {
@@ -438,6 +446,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       external->push_external_clause_and_witness_on_extension_stack({lit}, {lit}, var);
     }
   }
+  analyzed.clear ();
   LOG ("autarky removed %d clauses", removed);
 }
 

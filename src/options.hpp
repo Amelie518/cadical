@@ -31,6 +31,7 @@ OPTION( arenasort,         1,  0,  1,0,0,1, "sort clauses in arena") \
 OPTION( arenatype,         3,  1,  3,0,0,1, "1=clause, 2=var, 3=queue") \
 OPTION( autarkies,         0,  0,  1,0,0,1, "search for autarkies") \
 OPTION( autarkyafter,      1,  0,  1,0,0,1, "run autarkies also after rephasing") \
+OPTION( autarkyalgo,       0,  0,  3,0,0,1, "autarky minimization (0=none, 1=indep., 2=minimized ind., 3=dependant)") \
 OPTION( autarkydelay,      1,  0,  1,0,0,1, "delay autarkies if not useful") \
 OPTION( autarkynonincr,    0,  0,  0,0,0,1, "compact autarky reconstruction. Non compatible with incremental") \
 OPTION( backbone,          1,  0,  2,0,0,1, "binary clause backbone") \

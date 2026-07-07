@@ -363,10 +363,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
 
   std::unordered_map<int, std::vector<int>> partitions;
   std::unordered_map<int, std::vector<int>> selected_partitions;
-  std::unordered_map<int, std::vector<int>> greedy_partitions;
-  std::unordered_map<Clause *, bool> covered;
-  std::unordered_map<Clause *, int> clause_partition;
-  int part = 0;
+  
   if (autarkyalgo == 1) {
     for (int lit: actual_autarky) {
      int root = uf.find(abs(lit));
@@ -396,9 +393,6 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     if (c->garbage)
       continue;
     int clause_root = -1;
-    if (covered[c] && autarkyalgo == 3)
-      continue;
-    int chosen = 0;
 #ifndef NDEBUG
     bool satisfied = false;
     bool falsified = false;
@@ -408,25 +402,6 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       const signed char v = autarky_val [vlit (lit)];
       touched = (touched || v);
       clause_root = uf.find(abs(lit));
-      if (autarkyalgo == 3) {
-        if (autarky_val[vlit(lit)] > 0) {
-          chosen = lit;
-          break;
-        }
-        if (!chosen)
-          continue;
-        greedy_partitions[part].push_back(chosen);
-        //mark all clauses that are made true through this literal
-        const Watches &ws = watches(chosen);
-        for (auto &w : ws) {
-          if (!w.clause->garbage && !w.clause->redundant) {
-            covered[w.clause] = true;
-            clause_partition[w.clause] = part;
-          }
-        }
-        part++;
-      }
-    MSG("partition size: %zu", greedy_partitions.size());
 #ifndef NDEBUG
       if (v > 0) {
         satisfied = true; break;
@@ -458,10 +433,6 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
           witness = partitions[clause_root];
         else if (autarkyalgo == 2)
           witness = selected_partitions[clause_root];
-        else if (autarkyalgo == 3) {
-          int id = clause_partition[c];
-          witness = greedy_partitions[id];
-        }
         stats.autarkies.saved += actual_autarky.size()- witness.size();
         external->push_external_clause_and_witness_on_extension_stack(c, std::move (witness));
       }

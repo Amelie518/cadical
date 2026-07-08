@@ -316,7 +316,10 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   bool compact = opts.autarkynonincr;
   int16_t autarkyalgo = opts.autarkyalgo;
   LOG (actual_autarky, "the autarky is ");
-  
+
+  std::unordered_map<int, int> witness_to_order;
+  std::unordered_map<int, std::vector<int>> order_to_witness;
+
   assert (analyzed.empty ());
   // initialise unionfind
   UnionFind uf(max_var);
@@ -325,9 +328,32 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     if (c->garbage || c-> redundant)
       continue;
     int first_var = 0;
+    int witness_num = 0;
     if (autarkyalgo != 0) {
     for (auto lit: *c) {
       int v = abs(lit);
+      //search witness for clause and number witness
+      if (autarkyalgo == 3) {
+        if (autarky_val[vlit(lit)] > 0) { //literal satifies clause
+          if (first_var == 0) {
+            first_var = v;
+            // only add number of satisfying literal at first occurence
+            if (witness_to_order[first_var].empty()) {
+              witness_to_order[first_var] = witness_num;
+              order_to_witness[witness_num].push_back(first_var);
+              witness_num++;
+            }
+          } 
+        } else if (autarky_val[vlit(lit) < 0]) { // literal does not satisfy clause and needs to be added after first literal. No need to look at unnassigned lits(right?)
+          if (witness_to_order[v].empty()) {
+            witness_to_order[v] = witness_num;
+            order_to_witness[witness_num].push_back(v);
+            witness_num++;
+          } else {
+            for (auto w: order_to_witness[])
+          }
+        } 
+      }
       if(autarky_val[vlit(lit)] != 0) { //literal does belong to autarky
         if (first_var == 0) {
           first_var = v;

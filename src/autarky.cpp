@@ -530,6 +530,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     int num = 1;
     while (clauses_remaining) {
       clauses_remaining = false;
+      found_clause_in_this_layer = false;
       for (auto *c : clauses) {
         if (c->garbage) 
           continue;
@@ -542,10 +543,10 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       for (auto lit : *c) {
         const signed char v = autarky_val [vlit (lit)];
         touched = (touched || v);
-  #ifndef NDEBUG
         if (v > 0 && sat_lit == 0) {
           sat_lit= lit;
         }
+  #ifndef NDEBUG
         if (v > 0) {
           satisfied = true; break;
         }

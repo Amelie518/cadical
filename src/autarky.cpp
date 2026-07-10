@@ -317,8 +317,10 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   int16_t autarkyalgo = opts.autarkyalgo;
   LOG (actual_autarky, "the autarky is ");
 
-  std::unordered_map<int, int> witness_to_order;
-  std::unordered_map<int, std::vector<int>> order_to_witness;
+  std::vector<std::vector<int>> graph(max_var+1);
+  std::vector<int> deg(max_var +1, 0);
+  std::vector<int> order_of_lit(max_var +1,0);
+  std::unordered_map<int, std::vector<int>> order_to_witness_group;
 
   assert (analyzed.empty ());
   // initialise unionfind
@@ -328,31 +330,34 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     if (c->garbage || c-> redundant)
       continue;
     int first_var = 0;
-    int witness_num = 0;
     if (autarkyalgo != 0) {
     for (auto lit: *c) {
       int v = abs(lit);
-      //search witness for clause and number witness
+      //search witness for clause and order literals of autarkie
       if (autarkyalgo == 3) {
-        if (autarky_val[vlit(lit)] > 0) { //literal satifies clause
-          if (first_var == 0) {
-            first_var = v;
-            // only add number of satisfying literal at first occurence
-            if (witness_to_order[first_var].empty()) {
-              witness_to_order[first_var] = witness_num;
-              order_to_witness[witness_num].push_back(first_var);
-              witness_num++;
+        std::vector<int> falsified_vars;
+        int sat_var = 0;
+        for (auto lit: *c) {
+          if (autarky_val[vlit(lit)] == 0) // not pat of the autarky
+            continue;
+          else if (autarky_val[vlit(lit)] > 0) { // literal satisfies clause
+            if (sat_var ==0) { // simply choosing first one
+              sat_var = v;
             }
-          } 
-        } else if (autarky_val[vlit(lit) < 0]) { // literal does not satisfy clause and needs to be added after first literal. No need to look at unnassigned lits(right?)
-          if (witness_to_order[v].empty()) {
-            witness_to_order[v] = witness_num;
-            order_to_witness[witness_num].push_back(v);
-            witness_num++;
-          } else {
-            for (auto w: order_to_witness[])
           }
-        } 
+          else if (autarky_val[vlit(lit)] < 0) { // literal does not satisfy clause and is dependant on sat_var, has to be after it in order
+            falsified_vars.push_back(v);
+          }
+        }
+        //add the literals to graph
+        if (sat_var > 0 && !falsified_vars.empty()) {
+          for (int false_var: falsified_vars) {
+            if(uf.find(sat_var) == uf.find(false_var)) {
+              continue; //already in same cycle
+            }
+            graph[sat_var].push_back(false_var);
+          }
+        }
       }
       if(autarky_val[vlit(lit)] != 0) { //literal does belong to autarky
         if (first_var == 0) {
@@ -379,6 +384,56 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       assert (!marked (chosen));
       mark (chosen);
     }
+    }
+  }
+  // generate order list for witness literals via bfs
+  if (autarkyalgo == 3) {
+    //calculating indegree of literals
+    for (int u = 1; u <=max_var; u++) {
+      for (int v: graph[u]) {
+        deg[v]++;
+      }
+    }
+    std::queue<int> queue;
+    int current_order = 0;
+
+    //find start literal (literal with deg = 0)
+    for (int lit: actual_autarky) {
+      int v = abs(lit);
+      if (deg[v]== 0 && order_of_lit[v] == 0) {
+        current_order++;
+        queue.push(v);
+        order_of_lit[v] = current_order;
+      }
+    }
+    while (!queue.empty()) {
+      int u = queue.front();
+      queue.pop();
+      for (int v: graph[u]) {
+        deg[v]--;
+        if (deg[v] == 0) {
+          current_order++;
+          order_of_lit[v] = current_order; //lit gets order number higher than earllier lits
+          queue.push(v);
+        }
+        else if (deg[v] < 0) {
+          //cycle
+          if (order_of_lit[v] == 0 || order_of_lit [v] > order_of_lit[u]) {
+            order_of_lit[v] = order_of_lit[u];
+          } else if (order_of_lit[v] < order_of_lit[u] && !order_of_lit[v] == 0) {
+            order_of_lit[u] = order_of_lit[v];
+          } else {
+            assert(false);
+          }
+        }
+      }
+    }
+    for (int lit : actual_autarky) {
+      int v = abs(lit);
+      int order = order_of_lit[v];
+      if (order > 0) {
+        order_to_witness_group[order].push_back(lit);
+      }
     }
   }
   for (auto lit : analyzed)
@@ -415,58 +470,130 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       MSG ("size of %d: %d", p.first, p.second.size ());
     }
   }
-  for (auto *c : clauses) {
-    if (c->garbage)
-      continue;
-    int clause_root = -1;
-#ifndef NDEBUG
-    bool satisfied = false;
-    bool falsified = false;
-#endif
-    bool touched = false;
-    for (auto lit : *c) {
-      const signed char v = autarky_val [vlit (lit)];
-      touched = (touched || v);
-      clause_root = uf.find(abs(lit));
-#ifndef NDEBUG
-      if (v > 0) {
-        satisfied = true; break;
+  if (autarkyalgo != 3) {
+    for (auto *c : clauses) {
+      if (c->garbage)
+        continue;
+      int clause_root = -1;
+  #ifndef NDEBUG
+      bool satisfied = false;
+      bool falsified = false;
+  #endif
+      bool touched = false;
+      for (auto lit : *c) {
+        const signed char v = autarky_val [vlit (lit)];
+        touched = (touched || v);
+        clause_root = uf.find(abs(lit));
+  #ifndef NDEBUG
+        if (v > 0) {
+          satisfied = true; break;
+        }
+        if (v < 0) {
+          falsified = true;
+          continue;
+        }
+  #endif
+      if (v)
+        break;
       }
-      if (v < 0) {
-        falsified = true;
+      LOG (c, "clause");
+      assert (c->redundant || !falsified || satisfied);
+      assert (c->redundant || touched == satisfied);
+      if (c->redundant && touched) {
+        LOG (c, "delete touched clause");
+        mark_garbage (c);
         continue;
       }
-#endif
-    if (v)
-      break;
-    }
-    LOG (c, "clause");
-    assert (c->redundant || !falsified || satisfied);
-    assert (c->redundant || touched == satisfied);
-    if (c->redundant && touched) {
-      LOG (c, "delete touched clause");
-      mark_garbage (c);
-      continue;
-    }
-    if (touched) {
-      assert (!c->redundant);
-      if (!compact) {
-        if (proof)
-          proof->weaken_minus(c);
-        assert(clause_root != -1);
-        std::vector<int> witness = actual_autarky;
-        if (autarkyalgo ==1)
-          witness = partitions[clause_root];
-        else if (autarkyalgo == 2)
-          witness = selected_partitions[clause_root];
-        stats.autarkies.saved += actual_autarky.size()- witness.size();
-        external->push_external_clause_and_witness_on_extension_stack(c, std::move (witness));
+      if (touched) {
+        assert (!c->redundant);
+        if (!compact) {
+          if (proof)
+            proof->weaken_minus(c);
+          assert(clause_root != -1);
+          std::vector<int> witness = actual_autarky;
+          if (autarkyalgo ==1)
+            witness = partitions[clause_root];
+          else if (autarkyalgo == 2)
+            witness = selected_partitions[clause_root];
+          stats.autarkies.saved += actual_autarky.size()- witness.size();
+          external->push_external_clause_and_witness_on_extension_stack(c, std::move (witness));
+        }
+        LOG (c, "autarky removed satisfied clause");
+        mark_garbage (c);
+        ++removed;
       }
-      LOG (c, "autarky removed satisfied clause");
-      mark_garbage (c);
-      ++removed;
     }
   }
+  else if (autarkyalgo == 3 ) {
+    bool clauses_remaining = true;
+    bool found_clause_in_this_layer = false;
+    int num = 1;
+    while (clauses_remaining) {
+      clauses_remaining = false;
+      for (auto *c : clauses) {
+        if (c->garbage) 
+          continue;
+        int sat_lit = 0;
+  #ifndef NDEBUG
+      bool satisfied = false;
+      bool falsified = false;
+  #endif
+      bool touched = false;
+      for (auto lit : *c) {
+        const signed char v = autarky_val [vlit (lit)];
+        touched = (touched || v);
+  #ifndef NDEBUG
+        if (v > 0 && sat_lit == 0) {
+          sat_lit= lit;
+        }
+        if (v > 0) {
+          satisfied = true; break;
+        }
+        if (v < 0) {
+          falsified = true;
+          continue;
+        }
+  #endif
+      if (v)
+        break;
+      }
+      LOG (c, "clause");
+      assert (c->redundant || !falsified || satisfied);
+      assert (c->redundant || touched == satisfied);
+      if (c->redundant && touched) {
+        LOG (c, "delete touched clause");
+        mark_garbage (c);
+        continue;
+      }
+      if (touched) {
+        assert (!c->redundant);
+          if (sat_lit != 0) {
+            int order = order_of_lit[abs(sat_lit)];
+            if (order == num) {
+              found_clause_in_this_layer = true;
+              if (!compact) {
+                if (proof) proof->weaken_minus(c);
+                std::vector<int> witness = order_to_witness_group[order];
+                stats.autarkies.saved += actual_autarky.size() - witness.size();
+                external->push_external_clause_and_witness_on_extension_stack(c, std::move(witness));
+              }
+              mark_garbage(c);
+              ++removed;
+            }
+            else {
+              clauses_remaining = true;
+            }
+          }
+        }  
+        assert(satisfied || !touched);
+      }
+    if (found_clause_in_this_layer || clauses_remaining) {                                                                                                                
+      num++;
+    } else {
+      clauses_remaining = false;
+    }
+  }
+}
   // If a literal does not appear anymore in the formula, it will be part of the autarky, but not appear in any partition.
   if (autarkyalgo == 2)
     assert(!selected_partitions.empty() || !removed);

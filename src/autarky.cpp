@@ -331,13 +331,12 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       continue;
     int first_var = 0;
     if (autarkyalgo != 0) {
-    for (auto lit: *c) {
-      int v = abs(lit);
       //search witness for clause and order literals of autarkie
       if (autarkyalgo == 3) {
         std::vector<int> falsified_vars;
         int sat_var = 0;
         for (auto lit: *c) {
+          int v = abs(lit);
           if (autarky_val[vlit(lit)] == 0) // not pat of the autarky
             continue;
           else if (autarky_val[vlit(lit)] > 0) { // literal satisfies clause
@@ -359,6 +358,8 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
           }
         }
       }
+      for (auto lit: *c) {
+      int v = abs(lit);
       if(autarky_val[vlit(lit)] != 0) { //literal does belong to autarky
         if (first_var == 0) {
           first_var = v;

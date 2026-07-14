@@ -357,17 +357,18 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
             graph[sat_var].push_back(false_var);
           }
         }
-      }
-      for (auto lit: *c) {
-      int v = abs(lit);
-      if(autarky_val[vlit(lit)] != 0) { //literal does belong to autarky
-        if (first_var == 0) {
-          first_var = v;
-        } else {
-          uf.unite(first_var, v);
+      } else {
+        for (auto lit: *c) {
+          int v = abs(lit);
+          if(autarky_val[vlit(lit)] != 0) { //literal does belong to autarky
+            if (first_var == 0) {
+              first_var = v;
+            } else {
+              uf.unite(first_var, v);
+            }
+          }
         }
       }
-    }
     int chosen = 0;
     bool covered = false;
     for (auto lit: *c) {
@@ -399,14 +400,17 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     int current_order = 0;
 
     //find start literal (literal with deg = 0)
+    // is possibly no deg == 0????
     for (int lit: actual_autarky) {
       int v = abs(lit);
       if (deg[v]== 0 && order_of_lit[v] == 0) {
         current_order++;
         queue.push(v);
         order_of_lit[v] = current_order;
+        MSG("found deg 0");
       }
     }
+    //doesnt work for not connencted cycles,.... doesnt work at all?
     while (!queue.empty()) {
       int u = queue.front();
       queue.pop();

@@ -310,6 +310,60 @@ struct UnionFind {
 
 };
 
+struct Tarjan {
+  std::vector<std::vector<int>> &graph;
+  std::vector<int> dfs_num;
+  std::vector<int> dfs_low;
+  std::vector<int> stack;
+  std::vector<bool> on_stack;
+  int current_dfs_num;
+  std::vector<std::vector<int>> components;
+
+  Tarjan(std::vector<std::vector<int>> &g)
+    : graph(g),
+    dfs_num(g.size(), -1),
+    dfs_low(g.size(), 0),
+    on_stack(g.size(), false),
+    current_dfs_num(0) {}
+
+  void dfs(int v) {
+    dfs_num[v] = current_dfs_num;
+    dfs_low[v] = current_dfs_num;
+    current_dfs_num++;
+    stack.push_back(v);
+    on_stack[v] = true;
+
+    for (int u: graph[v]) {
+      if (dfs_num[u] == -1) {
+        dfs(u);
+        dfs_low[v] = std::min(dfs_low[v], dfs_low[u]);
+      } else if (on_stack[u]) {
+        dfs_low[v] = std::min(dfs_low[v], dfs_num[v]);
+      }
+    }
+    //found SCC
+    if (dfs_low[v] == dfs_num[v]) {
+      std::vector<int> component;
+      while (true) {
+        int u = stack.back();
+        stack.pop_back();
+        on_stack[u] = false;
+        component.push_back(u);
+        if(u == v)
+          break;
+      }
+      components.push_back(component);
+    }
+  }
+
+  void run() {
+    for (size_t i = 1; i < graph.size(); i++) {
+      if (dfs_num[i] == -1)
+        dfs(i);
+    }
+  }
+};
+
 void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
                               const std::vector<int> &actual_autarky) {                            
   int removed = 0;
@@ -318,7 +372,6 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   LOG (actual_autarky, "the autarky is ");
 
   std::vector<std::vector<int>> graph(max_var+1);
-  std::vector<int> deg(max_var +1, 0);
   std::vector<int> order_of_lit(max_var +1,0);
   std::unordered_map<int, std::vector<int>> order_to_witness_group;
 
@@ -388,57 +441,77 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     }
     }
   }
-  // generate order list for witness literals via bfs
+
+  //tarjans algorithm, finding strong connected components (cycles)
+  //then generate order list for witness literals via bfs
   if (autarkyalgo == 3) {
-    //calculating indegree of literals
-    for (int u = 1; u <=max_var; u++) {
-      for (int v: graph[u]) {
-        deg[v]++;
+    Tarjan tarjan (graph);
+    tarjan.run();
+    MSG("found %zu SCCs", tarjan.components.size());
+
+    //Build SCC grapoh
+    std::vector<int> component_id(max_var +1,-1);
+    for (size_t i = 0; i< tarjan.components.size(); i++) {
+      for (int v: tarjan.components[i]) {
+        component_id[v] = i;
       }
     }
+    std::vector<std::vector<int>> scc_graph(tarjan.components.size());
+    std::vector<int> indegree(tarjan.components.size(), 0);
+    for (int u = 1; u <= max_var; u++) {
+      for (int v: graph[u]) {
+        int cu = component_id[u];
+        int cv = component_id[v];
+        if (cu != cv) {
+          scc_graph[cu].push_back(cv);
+        }
+      }
+    }
+    //remove duplicate edges
+    for (auto &edges : scc_graph) {
+      std::sort(edges.begin(), edges.end());
+      edges.erase (std::unique(edges.begin(), edges.end()),edges.end());
+      for (int x: edges) {
+        indegree[x]++;
+      }
+    }
+    //find topological order
     std::queue<int> queue;
-    int current_order = 0;
+    int current_order = 1;
 
     //find start literal (literal with deg = 0)
-    // is possibly no deg == 0????
     for (int lit: actual_autarky) {
       int v = abs(lit);
-      if (deg[v]== 0 && order_of_lit[v] == 0) {
-        current_order++;
+      if (indegree[v]== 0 && order_of_lit[v] == 0) {
         queue.push(v);
-        order_of_lit[v] = current_order;
         MSG("found deg 0");
       }
     }
-    //doesnt work for not connencted cycles,.... doesnt work at all?
     while (!queue.empty()) {
       int u = queue.front();
       queue.pop();
-      for (int v: graph[u]) {
-        deg[v]--;
-        if (deg[v] == 0) {
-          current_order++;
-          order_of_lit[v] = current_order; //lit gets order number higher than earllier lits
-          queue.push(v);
-        }
-        else if (deg[v] < 0) {
-          //cycle
-          if (order_of_lit[v] == 0 || order_of_lit [v] > order_of_lit[u]) {
-            order_of_lit[v] = order_of_lit[u];
-          } else if (order_of_lit[v] < order_of_lit[u] && !order_of_lit[v] == 0) {
-            order_of_lit[u] = order_of_lit[v];
-          } else {
-            assert(false);
+      for (int v: tarjan.components[u]) {
+        for (auto lit:actual_autarky) {
+          if (abs(lit) == u) {
+            order_of_lit[u] = current_order;
+            order_to_witness_group[current_order].push_back(lit);
+            MSG("layer %d gets literal %d", current_order, lit);
+            break;
           }
         }
       }
-    }
-    for (int lit : actual_autarky) {
-      int v = abs(lit);
-      int order = order_of_lit[v];
-      if (order > 0) {
-        order_to_witness_group[order].push_back(lit);
+      for (int next: scc_graph[u]) {
+        indegree[next]--;
+        if (indegree[next] == 0) {
+          queue.push(next);
+        }
+        current_order++;
       }
+      // for (auto &entry : order_to_witness_group) {
+      //   MSG("witness layer %d:", entry.first);
+      //   for (int lit: entry.second)
+      //     MSG(" %d", lit);
+      // }
     }
   }
   for (auto lit : analyzed)
@@ -532,7 +605,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   else if (autarkyalgo == 3 ) {
     bool clauses_remaining = true;
     bool found_clause_in_this_layer = false;
-    int num = 1;
+    int num = 0;
     while (clauses_remaining) {
       clauses_remaining = false;
       found_clause_in_this_layer = false;
@@ -579,11 +652,15 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
               found_clause_in_this_layer = true;
               if (!compact) {
                 if (proof) proof->weaken_minus(c);
+                assert(order > 0);
+                assert(order_to_witness_group.count(order));
+                assert(!order_to_witness_group[order].empty());
                 std::vector<int> witness = order_to_witness_group[order];
                 stats.autarkies.saved += actual_autarky.size() - witness.size();
                 external->push_external_clause_and_witness_on_extension_stack(c, std::move(witness));
               }
               mark_garbage(c);
+              c->garbage = true;
               ++removed;
             }
             else {
@@ -595,6 +672,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       }
     if (found_clause_in_this_layer || clauses_remaining) {                                                                                                                
       num++;
+      MSG("finished layer %d, found=%d remaining=%d", num, found_clause_in_this_layer, clauses_remaining);
     } else {
       clauses_remaining = false;
     }

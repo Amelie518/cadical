@@ -338,7 +338,7 @@ struct Tarjan {
         dfs(u);
         dfs_low[v] = std::min(dfs_low[v], dfs_low[u]);
       } else if (on_stack[u]) {
-        dfs_low[v] = std::min(dfs_low[v], dfs_num[v]);
+        dfs_low[v] = std::min(dfs_low[v], dfs_num[u]);
       }
     }
     //found SCC
@@ -404,9 +404,9 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         //add the literals to graph
         if (sat_var > 0 && !falsified_vars.empty()) {
           for (int false_var: falsified_vars) {
-            if(uf.find(sat_var) == uf.find(false_var)) {
-              continue; //already in same cycle
-            }
+            //if(uf.find(sat_var) == uf.find(false_var)) {
+            //  continue; //already in same cycle
+            //}
             graph[sat_var].push_back(false_var);
           }
         }
@@ -443,7 +443,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   }
 
   //tarjans algorithm, finding strong connected components (cycles)
-  //then generate order list for witness literals via bfs
+  //then generate order list for witness literals via dfs
   if (autarkyalgo == 3) {
     Tarjan tarjan (graph);
     tarjan.run();
@@ -480,11 +480,10 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     int current_order = 1;
 
     //find start literal (literal with deg = 0)
-    for (int lit: actual_autarky) {
-      int v = abs(lit);
-      if (indegree[v]== 0 && order_of_lit[v] == 0) {
-        queue.push(v);
-        MSG("found deg 0");
+
+    for (size_t comp = 0; comp < tarjan.components.size(); comp++) {
+      if (indegree[comp] == 0) {
+        queue.push(comp);
       }
     }
     while (!queue.empty()) {
@@ -492,10 +491,10 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       queue.pop();
       for (int v: tarjan.components[u]) {
         for (auto lit:actual_autarky) {
-          if (abs(lit) == u) {
-            order_of_lit[u] = current_order;
+          if (abs(lit) == v) {
+            order_of_lit[v] = current_order;
             order_to_witness_group[current_order].push_back(lit);
-            MSG("layer %d gets literal %d", current_order, lit);
+            //MSG("layer %d gets literal %d", current_order, lit);
             break;
           }
         }
@@ -505,8 +504,8 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         if (indegree[next] == 0) {
           queue.push(next);
         }
-        current_order++;
       }
+      current_order++;
       // for (auto &entry : order_to_witness_group) {
       //   MSG("witness layer %d:", entry.first);
       //   for (int lit: entry.second)
@@ -605,7 +604,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   else if (autarkyalgo == 3 ) {
     bool clauses_remaining = true;
     bool found_clause_in_this_layer = false;
-    int num = 0;
+    int num = 1;
     while (clauses_remaining) {
       clauses_remaining = false;
       found_clause_in_this_layer = false;
@@ -621,8 +620,10 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       for (auto lit : *c) {
         const signed char v = autarky_val [vlit (lit)];
         touched = (touched || v);
-        if (v > 0 && sat_lit == 0) {
-          sat_lit= lit;
+        if (v > 0) {
+          if (sat_lit == 0 || order_of_lit[abs(lit)] < order_of_lit[abs(sat_lit)]) {
+            sat_lit = lit;
+          }
         }
   #ifndef NDEBUG
         if (v > 0) {
@@ -647,12 +648,13 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       if (touched) {
         assert (!c->redundant);
           if (sat_lit != 0) {
+            //MSG("sat lit");
             int order = order_of_lit[abs(sat_lit)];
+            assert(order > 0);
             if (order == num) {
               found_clause_in_this_layer = true;
               if (!compact) {
                 if (proof) proof->weaken_minus(c);
-                assert(order > 0);
                 assert(order_to_witness_group.count(order));
                 assert(!order_to_witness_group[order].empty());
                 std::vector<int> witness = order_to_witness_group[order];
@@ -664,6 +666,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
               ++removed;
             }
             else {
+              //MSG("no sat lit");
               clauses_remaining = true;
             }
           }
@@ -672,8 +675,19 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       }
     if (found_clause_in_this_layer || clauses_remaining) {                                                                                                                
       num++;
-      MSG("finished layer %d, found=%d remaining=%d", num, found_clause_in_this_layer, clauses_remaining);
+      //MSG("finished layer %d, found=%d remaining=%d", num, found_clause_in_this_layer, clauses_remaining);
     } else {
+      clauses_remaining = false;
+    }
+    int count = 0;
+    for (auto *c : clauses) {
+      if (!c->garbage) {
+        count++;
+        continue;
+      }
+      MSG("count of clauses to work on %d", count);
+    }
+    if (count == 0) {
       clauses_remaining = false;
     }
   }

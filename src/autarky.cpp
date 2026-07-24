@@ -517,9 +517,10 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   }
   for (auto lit : analyzed)
     unmark (lit);
-
+  #ifndef NDEBUG
   for (auto lit : lits)
     assert (!marked (lit));
+  #endif
 
   std::unordered_map<int, std::vector<int>> partitions;
   std::unordered_map<int, std::vector<int>> selected_partitions;
@@ -611,10 +612,10 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         if (c->garbage) 
           continue;
         int sat_lit = 0;
-  //#ifndef NDEBUG
+  #ifndef NDEBUG
       bool satisfied = false;
       bool falsified = false;
-  //#endif
+  #endif
       bool touched = false;
       for (auto lit : *c) {
         const signed char v = autarky_val [vlit (lit)];
@@ -624,7 +625,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
             sat_lit = lit;
           }
         }
-  //#ifndef NDEBUG
+  #ifndef NDEBUG
         if (v > 0) {
           satisfied = true; break;
         }
@@ -632,9 +633,9 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
           falsified = true;
           continue;
         }
-  //#endif
-      if (v)
-        break;
+  #endif
+      // if (v)
+      //   break;
       }
       LOG (c, "clause");
       assert (c->redundant || !falsified || satisfied);
@@ -660,7 +661,6 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
             external->push_external_clause_and_witness_on_extension_stack(c, std::move(witness));
           }
           mark_garbage(c);
-          c->garbage = true;
           ++removed;
         }
       }

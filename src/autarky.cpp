@@ -311,20 +311,22 @@ struct UnionFind {
 };
 
 struct Tarjan {
-  std::vector<std::vector<int>> &graph;
+  std::vector<std::unordered_set<int>> &graph;
   std::vector<int> dfs_num;
   std::vector<int> dfs_low;
   std::vector<int> stack;
   std::vector<bool> on_stack;
   int current_dfs_num;
+  std::unordered_set<int> active;
   std::vector<std::vector<int>> components;
 
-  Tarjan(std::vector<std::vector<int>> &g)
+  Tarjan(std::vector<std::unordered_set<int>> &g, std::unordered_set<int> a)
     : graph(g),
     dfs_num(g.size(), -1),
     dfs_low(g.size(), 0),
     on_stack(g.size(), false),
-    current_dfs_num(0) {}
+    current_dfs_num(0),
+    active(a) {}
 
   void dfs(int v) {
     dfs_num[v] = current_dfs_num;
@@ -357,7 +359,7 @@ struct Tarjan {
   }
 
   void run() {
-    for (size_t i = 1; i < graph.size(); i++) {
+    for (int i: active) {
       if (dfs_num[i] == -1)
         dfs(i);
     }
@@ -370,8 +372,9 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   bool compact = opts.autarkynonincr;
   int16_t autarkyalgo = opts.autarkyalgo;
   LOG (actual_autarky, "the autarky is ");
-
-  std::vector<std::vector<int>> graph(max_var+1);
+  MSG("max_var = %d", max_var);
+  MSG("actual_autarky = %zu", actual_autarky.size());
+  std::vector<std::unordered_set<int>> graph(max_var+1);
   std::vector<int> order_of_lit(max_var +1,0);
   std::unordered_map<int, std::vector<int>> order_to_witness_group;
 
@@ -407,7 +410,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
             //if(uf.find(sat_var) == uf.find(false_var)) {
             //  continue; //already in same cycle
             //}
-            graph[sat_var].push_back(false_var);
+            graph[sat_var].insert(false_var);
           }
         }
       } else {
@@ -441,11 +444,14 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     }
     }
   }
-
+  int current_order = 1;
   //tarjans algorithm, finding strong connected components (cycles)
   //then generate order list for witness literals via dfs
   if (autarkyalgo == 3) {
-    Tarjan tarjan (graph);
+    std::unordered_set<int> active;
+    for (int lit : actual_autarky)
+      active.insert(abs(lit));
+    Tarjan tarjan (graph, active);
     tarjan.run();
     MSG("found %zu SCCs", tarjan.components.size());
 
@@ -477,7 +483,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     }
     //find topological order
     std::queue<int> queue;
-    int current_order = 1;
+    //int current_order = 1;
 
     //find start literal (literal with deg = 0)
 
@@ -512,6 +518,14 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       //     MSG(" %d", lit);
       // }
     }
+    for (int lit : actual_autarky) {
+      int v = abs(lit);
+      if (order_of_lit[v] == 0) {
+        order_of_lit[v] = current_order;
+        order_to_witness_group[current_order].push_back(lit);
+      }
+    }
+    MSG("order %d", current_order);
   }
   for (auto lit : analyzed)
     unmark (lit);
@@ -602,20 +616,17 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     }
   }
   else if (autarkyalgo == 3 ) {
-    bool clauses_remaining = true;
-    bool found_clause_in_this_layer = false;
-    int num = 1;
-    while (clauses_remaining) {
-      clauses_remaining = false;
-      found_clause_in_this_layer = false;
+    // max order = current order because we stopped counting
+    int max_layer = current_order; 
+    for (int num = 1; num <= max_layer; ++num) {
       for (auto *c : clauses) {
         if (c->garbage) 
           continue;
         int sat_lit = 0;
-  #ifndef NDEBUG
+  //#ifndef NDEBUG
       bool satisfied = false;
       bool falsified = false;
-  #endif
+  //#endif
       bool touched = false;
       for (auto lit : *c) {
         const signed char v = autarky_val [vlit (lit)];
@@ -625,7 +636,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
             sat_lit = lit;
           }
         }
-  #ifndef NDEBUG
+  //#ifndef NDEBUG
         if (v > 0) {
           satisfied = true; break;
         }
@@ -633,7 +644,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
           falsified = true;
           continue;
         }
-  #endif
+  //#endif
       if (v)
         break;
       }
@@ -645,52 +656,50 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         mark_garbage (c);
         continue;
       }
-      if (touched) {
+      if (touched && sat_lit != 0) {
         assert (!c->redundant);
-          if (sat_lit != 0) {
-            //MSG("sat lit");
-            int order = order_of_lit[abs(sat_lit)];
-            assert(order > 0);
-            if (order == num) {
-              found_clause_in_this_layer = true;
-              if (!compact) {
-                if (proof) proof->weaken_minus(c);
-                assert(order_to_witness_group.count(order));
-                assert(!order_to_witness_group[order].empty());
-                std::vector<int> witness = order_to_witness_group[order];
-                stats.autarkies.saved += actual_autarky.size() - witness.size();
-                external->push_external_clause_and_witness_on_extension_stack(c, std::move(witness));
-              }
-              mark_garbage(c);
-              c->garbage = true;
-              ++removed;
-            }
-            else {
-              //MSG("no sat lit");
-              clauses_remaining = true;
-            }
+        int order = order_of_lit[abs(sat_lit)];
+        assert(order > 0);
+        assert(num <= order);
+        assert(num <= current_order); //current_order is max order
+        // Lösche alle Klauseln, deren minimale Erfüllungs-Layer <= num ist
+        if (order <= num) {
+          if (!compact) {
+            if (proof) proof->weaken_minus(c);
+            assert(order_to_witness_group.count(order));
+            assert(!order_to_witness_group[order].empty());
+            std::vector<int> witness = order_to_witness_group[order];
+            stats.autarkies.saved += actual_autarky.size() - witness.size();
+            external->push_external_clause_and_witness_on_extension_stack(c, std::move(witness));
           }
-        }  
-        assert(satisfied || !touched);
+          mark_garbage(c);
+          c->garbage = true;
+          ++removed;
+        }
       }
-    if (found_clause_in_this_layer || clauses_remaining) {                                                                                                                
-      num++;
-      //MSG("finished layer %d, found=%d remaining=%d", num, found_clause_in_this_layer, clauses_remaining);
-    } else {
-      clauses_remaining = false;
-    }
-    int count = 0;
-    for (auto *c : clauses) {
-      if (!c->garbage) {
-        count++;
-        continue;
+      assert(satisfied || !touched);
+      }
+      int count = 0; 
+      for (auto *c : clauses) {
+        bool touched = false;
+        int order = -1;
+        auto sat_lit = 0;
+        for (auto lit : *c) {
+          const signed char v = autarky_val [vlit (lit)];
+          touched = (touched || v);
+          if (sat_lit == 0 || order_of_lit[abs(lit)] < order_of_lit[abs(sat_lit)]) {
+            sat_lit = lit;
+          }
+        }
+        order = order_of_lit[abs(sat_lit)];
+        if (!c->garbage && touched) {
+          count++;
+          MSG("order of clause %d current num: %d max order: %d", order, num, current_order);
+          continue;
+        }
       }
       MSG("count of clauses to work on %d", count);
     }
-    if (count == 0) {
-      clauses_remaining = false;
-    }
-  }
 }
   // If a literal does not appear anymore in the formula, it will be part of the autarky, but not appear in any partition.
   if (autarkyalgo == 2)

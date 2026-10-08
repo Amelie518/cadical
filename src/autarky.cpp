@@ -375,12 +375,23 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   std::vector<std::unordered_set<int>> graph(max_var+1);
   std::vector<int> order_of_lit(max_var +1,0);
   std::unordered_map<int, std::vector<int>> order_to_witness_group;
+  // in algo 3 takes the partition of the first satisfying lit in each clause as witness(if false), otherwise takes witness with lowest order number
+  bool lowest_order_algo = opts.autarkyalgoimprove;
+  bool algo_3_analysis = false;
+  
+  // === Algo 3 analysis ===
+  size_t touched_clauses = 0;
+  size_t touched_clause_literals = 0;
+  size_t graph_edges = 0;
+  size_t total_clauses = 0;
 
   assert (analyzed.empty ());
   // initialise unionfind
   UnionFind uf(max_var);
   //for every clause unite all vars present in clause                              
   for (auto *c: clauses) {
+    if (algo_3_analysis)
+      total_clauses++;
     if (c->garbage || c-> redundant)
       continue;
     int first_var = 0;
@@ -402,10 +413,23 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
             falsified_vars.push_back(v);
           }
         }
+        if (algo_3_analysis) {
+          //=== ANALYSIS ===
+          if (sat_var > 0) {
+            touched_clauses++;
+            touched_clause_literals += c->size;
+          }
+        } 
         //add the literals to graph
         if (sat_var > 0 && !falsified_vars.empty()) {
           for (int false_var: falsified_vars) {
+            size_t old_size = graph[sat_var].size();
             graph[sat_var].insert(false_var);
+            if (algo_3_analysis) {
+              size_t new_size = graph[sat_var].size(); 
+              if (new_size > old_size)
+                graph_edges++;
+            }
           }
         }
       } else {
@@ -449,6 +473,20 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     Tarjan tarjan (graph, active);
     tarjan.run();
     MSG("Autarky Decomposition: split %zu literals into %zu dependant SCCs", actual_autarky.size(), tarjan.components.size());
+    if (algo_3_analysis) {
+      size_t graph_nodes = 0;
+      for (int v = 1; v <= max_var; v++) {
+        if (!graph[v].empty())
+          graph_nodes++;
+      }
+      MSG("=== Algo 3 analysis ===");
+      MSG("Autarky literals: %zu", actual_autarky.size());
+      MSG("Touched clauses: %zu", touched_clauses);
+      MSG("Touched clause literals: %zu", touched_clause_literals);
+      MSG("Graph nodes: %zu", graph_nodes);
+      MSG("Graph edges: %zu", graph_edges);
+      MSG("SCCs: %zu", tarjan.components.size());
+    }
 
     //Build SCC grapoh
     std::vector<int> component_id(max_var +1,-1);
@@ -612,6 +650,8 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         if (c->garbage) 
           continue;
         int sat_lit = 0;
+        // used for calculating the satisfying literal with minimal order (if lowest_order_algo == true)
+        int min_order = INT_MAX;
   #ifndef NDEBUG
       bool satisfied = false;
       bool falsified = false;
@@ -621,7 +661,12 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         const signed char v = autarky_val [vlit (lit)];
         touched = (touched || v);
         if (v > 0) {
-          if (sat_lit == 0) {
+          int lit_order = order_of_lit[abs(lit)];
+          if(lit_order < min_order && lowest_order_algo) {
+            min_order = lit_order;
+            sat_lit = lit;
+          }
+          if (sat_lit == 0 && !lowest_order_algo) {
             sat_lit = lit;
           }
         }

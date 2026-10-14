@@ -376,7 +376,6 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   std::vector<int> order_of_lit(max_var +1,0);
   std::unordered_map<int, std::vector<int>> order_to_witness_group;
   // in algo 3 takes the partition of the first satisfying lit in each clause as witness(if false), otherwise takes witness with lowest order number
-  bool lowest_order_algo = opts.autarkyalgoimprove;
   bool algo_3_analysis = false;
   
   // === Algo 3 analysis ===
@@ -397,7 +396,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     int first_var = 0;
     if (autarkyalgo != 0) {
       //search witness for clause and order literals of autarkie
-      if (autarkyalgo == 3) {
+      if (autarkyalgo == 3 || autarkyalgo == 4) {
         std::vector<int> falsified_vars;
         int sat_var = 0;
         for (auto lit: *c) {
@@ -466,7 +465,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   int current_order = 1;
   //tarjans algorithm, finding strong connected components (cycles)
   //then generate order list for witness literals via dfs
-  if (autarkyalgo == 3) {
+  if (autarkyalgo == 3 || autarkyalgo == 4) {
     std::unordered_set<int> active;
     for (int lit : actual_autarky)
       active.insert(abs(lit));
@@ -642,7 +641,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       }
     }
   }
-  else if (autarkyalgo == 3 ) {
+  else if (autarkyalgo == 3 || autarkyalgo == 4) {
     // max order = current order because we stopped counting
     int max_layer = current_order; 
     for (int num = 1; num <= max_layer; ++num) {
@@ -650,7 +649,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         if (c->garbage) 
           continue;
         int sat_lit = 0;
-        // used for calculating the satisfying literal with minimal order (if lowest_order_algo == true)
+        // used for calculating the satisfying literal with minimal order (if autarkyalgo == 4)
         int min_order = INT_MAX;
   #ifndef NDEBUG
       bool satisfied = false;
@@ -662,11 +661,11 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         touched = (touched || v);
         if (v > 0) {
           int lit_order = order_of_lit[abs(lit)];
-          if(lit_order < min_order && lowest_order_algo) {
+          if(lit_order < min_order && autarkyalgo == 4) {
             min_order = lit_order;
             sat_lit = lit;
           }
-          if (sat_lit == 0 && !lowest_order_algo) {
+          if (sat_lit == 0 && autarkyalgo == 3) {
             sat_lit = lit;
           }
         }

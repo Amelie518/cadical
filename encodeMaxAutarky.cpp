@@ -20,7 +20,7 @@ int satisfying_literal(int lit, const std::vector<int> &assignment) {
     return 0;
 }
 
-void encode (std::vector<std::vector<int>> &clauses,
+std::vector<std::vector<int>> encode (std::vector<std::vector<int>> &clauses,
     std::vector<int> &assignment, std::vector<int> &cadical_autarkie) {
     // int for every literal of assignment
     // positive if chosen for max autarkie, negative if not
@@ -57,12 +57,24 @@ void encode (std::vector<std::vector<int>> &clauses,
             encoded_clauses.push_back(clause);
         }
     }
-
-    //max(sum(select(abs))))
-
-    //sat solver? belegung(lösung) von sat solver
-
+    return encoded_clauses;
     //return autarky with all lits that are positive in the belegung
+}
+
+void write_cnf (std::vector<std::vector<int>> &clauses, int num_vars) {
+    int num_hard = clauses.size();
+    int num_soft = num_vars;
+    //hard clauses
+    for (auto c: clauses) {
+        std::cout << "h";
+        for (auto l: c)
+            std::cout << " " << l;
+        std::cout << " 0\n";
+    }
+    //soft cclauses
+    for (int v = 1; v <= num_vars; v++) {
+        std::cout << "1 " << v << " 0\n";
+    }
 }
 
 struct InputData {
@@ -230,17 +242,17 @@ int main(int argc, char* argv[]) {
 
     InputData input = read_input(argv[1]); 
 
-    std::cout << "Assignment-Literale: "
+    std::cout << "c Assignment-Literale: "
               << input.assignment.size() << '\n';
 
-    std::cout << "CaDiCaL-Autarkie-Literale: "
+    std::cout << "c CaDiCaL-Autarkie-Literale: "
               << input.cadical_autarkie.size() << '\n';
 
-    std::cout << "Klauseln: "
+    std::cout << "c Klauseln: "
               << input.clauses.size() << '\n';
 
     
-    encode(input.clauses, input.assignment, input.cadical_autarkie);
-
+    auto clauses = encode(input.clauses, input.assignment, input.cadical_autarkie);
+    write_cnf(clauses, input.assignment.size());
     return 0;
 }

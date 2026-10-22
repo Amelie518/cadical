@@ -9,27 +9,37 @@
 #include <unordered_map>
 
 //checks wether literal of clause satisfies clause
-int satisfying_literal(int lit, const std::vector<int> &assignment) {
-    for (int a: assignment) {
-        if (abs(a) == abs(lit)) {
-            if ((a > 0) == (lit > 0))
-                return 1;
-            else return -1;
-        }
-    }
-    return 0;
+int satisfying_literal(int lit, const std::vector<int> &assignment_value) {
+    int value = assignment_value[abs(lit)];
+    if (value == 0)
+        return 0;
+    if ((value > 0) == (lit > 0))
+        return 1;
+    return -1;
 }
 
 std::vector<std::vector<int>> encode (std::vector<std::vector<int>> &clauses,
     std::vector<int> &assignment, std::vector<int> &cadical_autarkie) {
     // int for every literal of assignment
     // positive if chosen for max autarkie, negative if not
-    std::unordered_map<int, int> select;
+    int max_var = 0;
+    for (int lit: assignment)
+        max_var = std::max(max_var, abs(lit));
+    for (auto &clause: clauses) {
+        for (int lit: clause)
+            max_var = std::max(max_var, abs(lit));
+    }
+
+    std::vector<int> assignment_value(max_var + 1, 0);
+    // int for every literal of assignment
+    // positive if chosen for max autarkie, negative if not
+    std::vector<int> select(max_var + 1, 0);
     int num_var = 1;
     //initializes select for every relevant val with a number staring with 1
     for (int lit: assignment) {
         int var = abs(lit);
-        if (select.find (var) == select.end()) {
+        assignment_value[var] = (lit > 0) ? 1:-1;
+        if (select[var] == 0) {
             select[var] = num_var;
             num_var++;
         }
@@ -41,7 +51,7 @@ std::vector<std::vector<int>> encode (std::vector<std::vector<int>> &clauses,
         std::vector<int> satisfied;
         std::vector<int> falsified;
         for (auto l: c) {
-            int sat_lit = satisfying_literal(l, assignment);
+            int sat_lit = satisfying_literal(l, assignment_value);
             if (sat_lit == 1)  {//satisfies clause
                 satisfied.push_back(abs(l));
             } else if (sat_lit == -1) 
@@ -253,6 +263,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    std::cout << "c reading file \n";
     InputData input = read_input(argv[1]); 
     std::string filename = argv[2];
 
@@ -265,9 +276,11 @@ int main(int argc, char* argv[]) {
     std::cout << "c Klauseln: "
               << input.clauses.size() << '\n';
 
-    
+    std::cout << "c encoding \n";
     auto clauses = encode(input.clauses, input.assignment, input.cadical_autarkie);
+    std::cout << "c writing wcnf \n";
     write_cnf2(clauses, input.assignment.size(), filename + ".wcnf");
     //write_cnf(clauses, input.assignment.size());
+    std::cout << "c finished \n";
     return 0;
 }

@@ -61,9 +61,7 @@ std::vector<std::vector<int>> encode (std::vector<std::vector<int>> &clauses,
     //return autarky with all lits that are positive in the belegung
 }
 
-void write_cnf (std::vector<std::vector<int>> &clauses, int num_vars) {
-    int num_hard = clauses.size();
-    int num_soft = num_vars;
+void write_cnf (const std::vector<std::vector<int>> &clauses, int num_vars) {
     //hard clauses
     for (auto c: clauses) {
         std::cout << "h";
@@ -72,8 +70,23 @@ void write_cnf (std::vector<std::vector<int>> &clauses, int num_vars) {
         std::cout << " 0\n";
     }
     //soft cclauses
-    for (int v = 1; v <= num_vars; v++) {
+    for (int v = 1; v <= num_vars; ++v) {
         std::cout << "1 " << v << " 0\n";
+    }
+}
+
+void write_cnf2 (const std::vector<std::vector<int>> &clauses, int num_vars, const std::string &filename) {
+    std::ofstream out(filename);
+    //hard clauses
+    for (auto c: clauses) {
+        out << "h";
+        for (auto l: c)
+            out << " " << l;
+        out << " 0\n";
+    }
+    //soft cclauses
+    for (int v = 1; v <= num_vars; ++v) {
+        out << "1 " << v << " 0\n";
     }
 }
 
@@ -235,12 +248,13 @@ InputData read_input(const std::string& filename) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        std::cerr << "Verwendung: " << argv[0] << " <datei.cnf.xz>\n";
+    if (argc != 3) {
+        std::cerr << "Verwendung: " << argv[0] << " <datei.cnf.xz> <'filename'>\n";
         return 1;
     }
 
     InputData input = read_input(argv[1]); 
+    std::string filename = argv[2];
 
     std::cout << "c Assignment-Literale: "
               << input.assignment.size() << '\n';
@@ -253,6 +267,7 @@ int main(int argc, char* argv[]) {
 
     
     auto clauses = encode(input.clauses, input.assignment, input.cadical_autarkie);
-    write_cnf(clauses, input.assignment.size());
+    write_cnf2(clauses, input.assignment.size(), filename + ".wcnf");
+    //write_cnf(clauses, input.assignment.size());
     return 0;
 }

@@ -266,6 +266,9 @@ int main(int argc, char* argv[]) {
     std::cout << "c reading file \n";
     InputData input = read_input(argv[1]); 
     std::string filename = argv[2];
+    std::ofstream size_file("cadical_autarky_size.log");
+    size_file << input.cadical_autarkie.size() << "\n";
+    size_file.close();
 
     std::cout << "c Assignment-Literale: "
               << input.assignment.size() << '\n';

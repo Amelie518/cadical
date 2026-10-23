@@ -11,4 +11,4 @@ makefile
 /traces
 *.plist
 *.pch
-.cache
+.cachedata_logs/maxsatdata.wcnf

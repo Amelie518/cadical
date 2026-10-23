@@ -1,3 +1,7 @@
+// ./encodeMaxAutarky <constructed_cnf_filename> <'encoded_wcnf_target_file'>
+// ~/sose26/solvers/uwrmaxsat/build/release/bin/uwrmaxsat ~/sose26/cadical/encoded_wcnf.wcnf >output.log
+// ./compareMaxAutarky output.log
+
 #include <vector>
 #include <cstdlib>
 #include <cstdio>

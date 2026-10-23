@@ -42,8 +42,13 @@ int main (int argc, char *argv[]) {
 				false_vars++;
 		}
 	}
+	while (getline(size_file, line)) {
+		cadical_autarky_size = std::stoi(line);
+	}
+	int diff = true_vars - cadical_autarky_size;
 	std::cout <<"true variables: " << true_vars << "\n";
 	std::cout <<"autarky variables: " << cadical_autarky_size << "\n";
+	std::cout <<"Difference between Autarky variables and true variables: " << diff << "\n";
 	std::cout <<"false variables: " << false_vars << "\n";
 
 	return 0;

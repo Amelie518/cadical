@@ -9,7 +9,7 @@
 #include <unordered_map>
 
 int main (int argc, char *argv[]) {
-	if (argc < 2) {
+	if (argc < 3) {
 		std::cerr << "Verwendung: " << argv[0] << " <datei.log>\n";
         return 1;
 	}
@@ -22,12 +22,7 @@ int main (int argc, char *argv[]) {
 	std::string line;
 	int true_vars = 0;
 	int false_vars = 0;
-	int cadical_autarky_size;
-	std::ifstream size_file("cadical_autarky_size.log");
-	if (!file) {
-		std::cerr << "Autarky size konnte nicht geöffnet werden\n";
-		return 1;
-	}
+	int cadical_autarky_size = std::stoi(argv[2]);
 
 	while (std::getline(file, line)) {
 		if (line.empty() || line[0] != 'v')
@@ -42,9 +37,7 @@ int main (int argc, char *argv[]) {
 				false_vars++;
 		}
 	}
-	while (getline(size_file, line)) {
-		cadical_autarky_size = std::stoi(line);
-	}
+	
 	int diff = true_vars - cadical_autarky_size;
 	std::cout <<"true variables: " << true_vars << "\n";
 	std::cout <<"autarky variables: " << cadical_autarky_size << "\n";

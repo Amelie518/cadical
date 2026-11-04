@@ -23,7 +23,7 @@ int satisfying_literal(int lit, const std::vector<int> &assignment_value) {
 }
 
 std::vector<std::vector<int>> encode (std::vector<std::vector<int>> &clauses,
-    std::vector<int> &assignment, std::vector<int> &cadical_autarkie) {
+    std::vector<int> &assignment) {
     // int for every literal of assignment
     // positive if chosen for max autarkie, negative if not
     int max_var = 0;
@@ -75,21 +75,7 @@ std::vector<std::vector<int>> encode (std::vector<std::vector<int>> &clauses,
     //return autarky with all lits that are positive in the belegung
 }
 
-void write_cnf (const std::vector<std::vector<int>> &clauses, int num_vars) {
-    //hard clauses
-    for (auto c: clauses) {
-        std::cout << "h";
-        for (auto l: c)
-            std::cout << " " << l;
-        std::cout << " 0\n";
-    }
-    //soft cclauses
-    for (int v = 1; v <= num_vars; ++v) {
-        std::cout << "1 " << v << " 0\n";
-    }
-}
-
-void write_cnf2 (const std::vector<std::vector<int>> &clauses, int num_vars, const std::string &filename) {
+void write_cnf (const std::vector<std::vector<int>> &clauses, int num_vars, const std::string &filename) {
     std::ofstream out(filename);
     //hard clauses
     for (auto c: clauses) {
@@ -261,34 +247,17 @@ InputData read_input(const std::string& filename) {
     return data;
 }
 
+
 int main(int argc, char* argv[]) {
     if (argc != 3) {
         std::cerr << "Verwendung: " << argv[0] << " <datei.cnf.xz> <'filename'>\n";
         return 1;
     }
-
-    //std::cout << "c reading file \n";
     InputData input = read_input(argv[1]); 
     std::string filename = argv[2];
-    std::ofstream size_file("cadical_autarky_size.log");
-    size_file << input.cadical_autarkie.size() << "\n";
-    size_file.close();
 
-    // std::cout << "c Assignment-Literale: "
-    //           << input.assignment.size() << '\n';
-
-    // std::cout << "c CaDiCaL-Autarkie-Literale: "
-    //           << input.cadical_autarkie.size() << '\n';
-
-    // std::cout << "c Klauseln: "
-    //          << input.clauses.size() << '\n';
-
-    //std::cout << "c encoding \n";
-    auto clauses = encode(input.clauses, input.assignment, input.cadical_autarkie);
-    //std::cout << "c writing wcnf \n";
-    write_cnf2(clauses, input.assignment.size(), filename + ".wcnf");
-    //write_cnf(clauses, input.assignment.size());
-    //std::cout << "c finished \n";
+    auto clauses = encode(input.clauses, input.assignment);
+    write_cnf(clauses, input.assignment.size(), filename + ".wcnf");
     std::cout << input.cadical_autarkie.size() << std::endl;
     return 0;
 }

@@ -1,8 +1,0 @@
-#!/bin/bash
-mkdir -p wcnf
-output=./wcnf/$(basename $1 .cnf.xz)
-NUMBERVARS=$(./encode/encodeMaxAutarky $1 $output)
-tmpfile=$(mktemp)
-~/Bachelorprojekt/solvers/uwrmaxsat/build/release/bin/uwrmaxsat $output.wcnf > $tmpfile
-./encode/compareMaxAutarky $tmpfile $NUMBERVARS
-rm $tmpfile

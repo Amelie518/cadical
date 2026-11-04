@@ -371,6 +371,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   int removed = 0;
   bool compact = opts.autarkynonincr;
   int16_t autarkyalgo = opts.autarkyalgo;
+  bool algo_graph = (autarkyalgo == 3 || autarkyalgo == 4 || autarkyalgo == 5 || autarkyalgo == 6);
   LOG (actual_autarky, "the autarky is ");
   std::vector<std::unordered_set<int>> graph(max_var+1);
   std::vector<int> order_of_lit(max_var +1,0);
@@ -387,7 +388,30 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   assert (analyzed.empty ());
   // initialise unionfind
   UnionFind uf(max_var);
-  //for every clause unite all vars present in clause                              
+  //for occurence base optimzing
+  std::vector<int> positive_occurences(max_var + 1, 0);
+  std::vector<int> negative_occurences(max_var + 1, 0);
+  //for every clause unite all vars present in clause  
+  if (autarkyalgo == 5 || autarkyalgo == 6) { 
+    for (auto *c: clauses) {
+      if (c->garbage || c-> redundant)
+      continue;
+      for (auto lit: *c) {
+        //for occurence optimizing
+        if (lit > 0) {
+          positive_occurences[lit]++;
+        }
+        else if (lit < 0) {
+          negative_occurences[abs(lit)]++;
+        }
+      }
+    } 
+    if (auarkyalgo == 6) {
+      std::vector<int> occurence_ratio_pos(max_var + 1, -1);
+      std::vector<int> occurence_ratio_neg(max_var + 1, -1);
+    }
+  }
+                            
   for (auto *c: clauses) {
     if (algo_3_analysis)
       total_clauses++;
@@ -396,16 +420,54 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     int first_var = 0;
     if (autarkyalgo != 0) {
       //search witness for clause and order literals of autarkie
-      if (autarkyalgo == 3 || autarkyalgo == 4) {
+      if (algo_graph) {
         std::vector<int> falsified_vars;
         int sat_var = 0;
+        std::pair<int,int> sat_var_pair = {0,-1};
         for (auto lit: *c) {
           int v = abs(lit);
           if (autarky_val[vlit(lit)] == 0) // not pat of the autarky
             continue;
           else if (autarky_val[vlit(lit)] > 0) { // literal satisfies clause
-            if (sat_var ==0) { // simply choosing first one
+            if (sat_var ==0 && !(autarkyalgo == 5) && !(autarkyalgo == 6)) { // simply choosing first one
               sat_var = v;
+            }
+            else if (autarkyalgo == 5) {
+              //choosing the v with highest occurence
+              int occurences = -1;
+              if (lit > 0) {
+                occurences = positive_occurences[lit];
+              }
+              else if (lit < 0) {
+                occurences = negative_occurences[lit];
+              }
+              if (occurences > sat_var_pair.second) {
+                sat_var_pair.first = v;
+                sat_var = v;
+                sat_var_pair.second = occurences;
+              }
+            }
+            else if (autarkyalgo == 6) {
+              int occurences = -1;
+              if (lit > 0) {
+                occurences = occurence_ratio_pos[lit];
+                if (occurences == -1) {
+                  occurence_ratio_pos[lit] = positive_occurences[lit] / negative_occurences[lit];
+                  occurences = occurence_ratio_pos[lit];
+                }
+              }
+              else if (lit < 0) {
+                occurences = occurence_ratio_neg[lit];
+                if (occurences == -1) {
+                  occurence_ratio_neg[lit] = negative_occurences[lit] / positive_occurences[lit];
+                  occurences = occurence_ratio_neg[lit];
+                }
+              }
+              if (occurences > sat_var_pair.second) {
+                sat_var_pair.first = v;
+                sat_var = v;
+                sat_var_pair.second = occurences;
+              }
             }
           }
           else if (autarky_val[vlit(lit)] < 0) { // literal does not satisfy clause and is dependant on sat_var, has to be after it in order
@@ -465,7 +527,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   int current_order = 1;
   //tarjans algorithm, finding strong connected components (cycles)
   //then generate order list for witness literals via dfs
-  if (autarkyalgo == 3 || autarkyalgo == 4) {
+  if (algo_graph) {
     std::unordered_set<int> active;
     for (int lit : actual_autarky)
       active.insert(abs(lit));
@@ -587,7 +649,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       MSG ("size of %d: %zu", p.first, p.second.size ());
     }
   }
-  if (autarkyalgo != 3) {
+  if (!algo_graph) {
     for (auto *c : clauses) {
       if (c->garbage)
         continue;
@@ -641,7 +703,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       }
     }
   }
-  else if (autarkyalgo == 3 || autarkyalgo == 4) {
+  else if (algo_graph) {
     // max order = current order because we stopped counting
     int max_layer = current_order; 
     for (int num = 1; num <= max_layer; ++num) {
@@ -661,7 +723,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
         touched = (touched || v);
         if (v > 0) {
           int lit_order = order_of_lit[abs(lit)];
-          if(lit_order < min_order && autarkyalgo == 4) {
+          if(lit_order < min_order && (autarkyalgo == 4 || autarkyalgo == 5 || autarkyalgo == 6)) {
             min_order = lit_order;
             sat_lit = lit;
           }

@@ -12,3 +12,5 @@ makefile
 *.plist
 *.pch
 .cachedata_logs/maxsatdata.wcnf
+*.wcnf
+wcnf

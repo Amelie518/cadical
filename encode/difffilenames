@@ -1,0 +1,49 @@
+../sc2024-autarkies/noautarkydelayrephase2/goldcrest-and-9-12.cnf.xz
+true variables: 240
+autarky variables: 236
+Difference between Autarky variables and true variables: 4
+--
+../sc2024-autarkies/noautarkydelayrephase2/rook-42-0-1-8.cnf.xz
+true variables: 373
+autarky variables: 369
+Difference between Autarky variables and true variables: 4
+--
+../sc2024-autarkies/noautarkydelayrephase2/rook-42-0-1-10.cnf.xz
+true variables: 238
+autarky variables: 235
+Difference between Autarky variables and true variables: 3
+--
+../sc2024-autarkies/noautarkydelayrephase2/1-ZC-512-K-60.sanitized-6.cnf.xz
+true variables: 148
+autarky variables: 147
+Difference between Autarky variables and true variables: 1
+--
+../sc2024-autarkies/noautarkydelayrephase2/goldcrest-and-9-10.cnf.xz
+true variables: 370
+autarky variables: 367
+Difference between Autarky variables and true variables: 3
+--
+../sc2024-autarkies/noautarkydelayrephase2/1-ET-512-K-110.sanitized-15.cnf.xz
+true variables: 49
+autarky variables: 48
+Difference between Autarky variables and true variables: 1
+--
+../sc2024-autarkies/noautarkydelayrephase2/1-ET-512-K-96.sanitized-18.cnf.xz
+true variables: 3
+autarky variables: 1
+Difference between Autarky variables and true variables: 2
+--
+../sc2024-autarkies/noautarkydelayrephase2/1-ET-512-K-110.sanitized-17.cnf.xz
+true variables: 14
+autarky variables: 13
+Difference between Autarky variables and true variables: 1
+--
+../sc2024-autarkies/noautarkydelayrephase2/1-ET-512-K-96.sanitized-17.cnf.xz
+true variables: 139
+autarky variables: 137
+Difference between Autarky variables and true variables: 2
+--
+../sc2024-autarkies/noautarkydelayrephase2/1-ET-512-K-110.sanitized-16.cnf.xz
+true variables: 2
+autarky variables: 1
+Difference between Autarky variables and true variables: 1

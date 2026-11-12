@@ -389,8 +389,8 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
   // initialise unionfind
   UnionFind uf(max_var);
   //for occurence base optimzing
-  std::vector<int> positive_occurences(max_var + 1, 0);
-  std::vector<int> negative_occurences(max_var + 1, 0);
+  init_noccs();
+  std::vector<double> occurence_ratio(2*max_var + 1, -1.0);
   //for every clause unite all vars present in clause  
   if (autarkyalgo == 5 || autarkyalgo == 6) { 
     for (auto *c: clauses) {
@@ -398,18 +398,9 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       continue;
       for (auto lit: *c) {
         //for occurence optimizing
-        if (lit > 0) {
-          positive_occurences[lit]++;
-        }
-        else if (lit < 0) {
-          negative_occurences[abs(lit)]++;
-        }
+        noccs(lit)++;
       }
     } 
-    if (auarkyalgo == 6) {
-      std::vector<int> occurence_ratio_pos(max_var + 1, -1);
-      std::vector<int> occurence_ratio_neg(max_var + 1, -1);
-    }
   }
                             
   for (auto *c: clauses) {
@@ -423,7 +414,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
       if (algo_graph) {
         std::vector<int> falsified_vars;
         int sat_var = 0;
-        std::pair<int,int> sat_var_pair = {0,-1};
+        std::pair<int,double> sat_var_pair = {0,-1};
         for (auto lit: *c) {
           int v = abs(lit);
           if (autarky_val[vlit(lit)] == 0) // not pat of the autarky
@@ -435,12 +426,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
             else if (autarkyalgo == 5) {
               //choosing the v with highest occurence
               int occurences = -1;
-              if (lit > 0) {
-                occurences = positive_occurences[lit];
-              }
-              else if (lit < 0) {
-                occurences = negative_occurences[lit];
-              }
+              occurences = noccs(lit);
               if (occurences > sat_var_pair.second) {
                 sat_var_pair.first = v;
                 sat_var = v;
@@ -448,20 +434,16 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
               }
             }
             else if (autarkyalgo == 6) {
-              int occurences = -1;
-              if (lit > 0) {
-                occurences = occurence_ratio_pos[lit];
-                if (occurences == -1) {
-                  occurence_ratio_pos[lit] = positive_occurences[lit] / negative_occurences[lit];
-                  occurences = occurence_ratio_pos[lit];
+              double occurences = -1;
+              occurences = occurence_ratio[vlit(lit)];
+              if (occurences == -1) {
+                double positive = noccs(lit);
+                double negative = noccs(-lit);
+                if (negative == 0) {
+                  occurence_ratio[vlit(lit)] = positive/0.1; // 0.1 because we want to make occurence bigger, because its good to choose lit occuring in only one phase
                 }
-              }
-              else if (lit < 0) {
-                occurences = occurence_ratio_neg[lit];
-                if (occurences == -1) {
-                  occurence_ratio_neg[lit] = negative_occurences[lit] / positive_occurences[lit];
-                  occurences = occurence_ratio_neg[lit];
-                }
+                else {occurence_ratio[vlit(lit)] =positive/negative;}
+                occurences = occurence_ratio[vlit(lit)];
               }
               if (occurences > sat_var_pair.second) {
                 sat_var_pair.first = v;
@@ -524,6 +506,7 @@ void Internal::autarky_apply (const std::vector<signed char> &autarky_val,
     }
     }
   }
+  reset_noccs();
   int current_order = 1;
   //tarjans algorithm, finding strong connected components (cycles)
   //then generate order list for witness literals via dfs

@@ -32,7 +32,7 @@ int main (int argc, char* argv[]) {
             if (line.size() < 2 || line[0] != 'c' || line[1] != ' ')
                 continue;
             char marker = line[2];
-            if (isupper(marker) || marker == '#') {
+            if ((isupper(marker) || marker == '#') && line[3] == ' ') {
                 last_upper = marker;
             }
             else if (marker == 'a') {

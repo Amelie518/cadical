@@ -289,6 +289,31 @@ int Internal::decide_wrapper () {
 
 #endif
 
+struct UnionFind {
+  std::vector<int> parent;
+  // initalising, every variable points to itself
+  UnionFind(int n) {
+    parent.resize(n+1);
+    for (int i = 0; i <= n; ++i) {
+      parent[i] = i;
+    }
+  }
+  // returns class (root) of var i
+  int find(int i) {
+    if (parent[i] == i) return i;
+    return parent[i] = find(parent[i]);
+  }
+
+  void unite(int i, int j) {
+    int root_i = find(i);
+    int root_j = find(j);
+    if (root_i != root_j) {
+      parent[root_i] = root_j;
+    }
+  }
+
+};
+
 /*------------------------------------------------------------------------*/
 
 // This is the main CDCL loop with interleaved inprocessing.
@@ -296,6 +321,7 @@ int Internal::decide_wrapper () {
 int Internal::cdcl_loop_with_inprocessing () {
 
   int res = 0;
+  bool autarkyanalysing = opts.autarkyanalysing;
 
   START (search);
 
@@ -359,8 +385,49 @@ int Internal::cdcl_loop_with_inprocessing () {
     STOP (unstable);
     report ('}');
   }
-  if (res == 10) {
+  if (res == 10 && autarkyanalysing) {
     // here SAT, do decomposition.
+    //initialize UF
+    UnionFind uf(max_var + 1);
+    for (auto *c: clauses) {
+      if (c->garbage)
+        continue;
+      int first_var = 0;
+      for (auto lit: *c) {
+        int v = abs(lit);
+        if(val(lit) != 0) { //literal does belong to solution
+          if (first_var == 0) {
+            first_var = v;
+          } else {
+            uf.unite(first_var, v);
+          }
+        }
+      }
+    }
+    std::vector<std::vector<int>> partitions(max_var + 1);
+    for (auto v: vars) {
+      if (val(v) == 0)
+        continue;
+      int root = uf.find(abs(v));
+      if (val(v) > 0) {
+        partitions[root].push_back(v);
+      } else {
+        partitions[root].push_back(-v);
+      }
+    }
+    //orint decomposed autarkies
+    int number_autarkies = 0;
+    for (auto autarky: partitions) {
+      if (autarky.empty())
+        continue;
+      number_autarkies++;
+      MSG("Autarky number %d: ", number_autarkies);
+      printf("c ");
+      for (int lit: autarky) {
+        printf("%d ", lit);
+      }
+      printf("\n");
+    }
   }
   STOP (search);
 

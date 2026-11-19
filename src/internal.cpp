@@ -359,7 +359,9 @@ int Internal::cdcl_loop_with_inprocessing () {
     STOP (unstable);
     report ('}');
   }
-
+  if (res == 10) {
+    // here SAT, do decomposition.
+  }
   STOP (search);
 
   return res;
